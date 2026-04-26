@@ -2,12 +2,27 @@
 
 import { useState, useRef, useEffect } from 'react'
 import {
+  DndContext,
+  closestCenter,
+  DragEndEvent,
+  PointerSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import {
   Sparkles,
   Pencil,
   Trash2,
   Plus,
-  ChevronUp,
-  ChevronDown,
   AlertCircle,
   Loader2,
   X,
@@ -15,6 +30,7 @@ import {
   EyeOff,
   Info,
   RotateCcw,
+  GripVertical,
 } from 'lucide-react'
 
 interface Question {
@@ -44,8 +60,133 @@ const INITIAL_MANUAL: Question[] = [
   { id: 'q-1', text: 'What is the global market for Analytical HPLC?', source: 'manual' },
   { id: 'q-2', text: 'Tell me about the LC/MS market.', source: 'manual' },
   { id: 'q-3', text: 'What is the combined GC and GC/MS market by geography?', source: 'manual' },
-  { id: "q-4", text: "What's the size of the analytical HPLC columns market?", source: 'manual' },
+  { id: 'q-4', text: "What's the size of the analytical HPLC columns market?", source: 'manual' },
 ]
+
+// ─── Sortable question row ───────────────────────────────────────────────────
+
+interface QuestionRowProps {
+  q: Question
+  editingId: string | null
+  editText: string
+  onEditStart: (q: Question) => void
+  onEditChange: (text: string) => void
+  onEditSave: () => void
+  onEditCancel: () => void
+  onDelete: (q: Question) => void
+  editInputRef: React.RefObject<HTMLInputElement | null>
+}
+
+function SortableQuestionRow({
+  q,
+  editingId,
+  editText,
+  onEditStart,
+  onEditChange,
+  onEditSave,
+  onEditCancel,
+  onDelete,
+  editInputRef,
+}: QuestionRowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: q.id,
+  })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  const isEditing = editingId === q.id
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group flex items-start gap-2 px-3 py-3 border-b border-gray-100 last:border-b-0 ${
+        isDragging ? 'bg-indigo-50/60 opacity-60 rounded-xl z-10' : 'bg-white'
+      }`}
+    >
+      {/* Drag handle */}
+      <button
+        {...listeners}
+        {...attributes}
+        tabIndex={-1}
+        className="mt-0.5 shrink-0 cursor-grab active:cursor-grabbing touch-none text-gray-300 hover:text-gray-500 transition-colors"
+        title="Drag to reorder"
+      >
+        <GripVertical size={15} />
+      </button>
+
+      {/* AI badge */}
+      {q.source === 'ai' ? (
+        <Sparkles size={13} className="text-indigo-400 shrink-0 mt-0.5" />
+      ) : (
+        <span className="w-[13px] shrink-0" />
+      )}
+
+      {/* Text / inline editor */}
+      <div className="flex-1 min-w-0">
+        {isEditing ? (
+          <div>
+            <input
+              ref={editInputRef}
+              value={editText}
+              onChange={e => onEditChange(e.target.value.slice(0, MAX_CHARS))}
+              onKeyDown={e => {
+                if (e.key === 'Enter') onEditSave()
+                if (e.key === 'Escape') onEditCancel()
+              }}
+              className="w-full text-sm border border-indigo-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-800"
+            />
+            <div className="flex items-center justify-between mt-1.5">
+              <span
+                className={`text-xs ${editText.length > MAX_CHARS * 0.85 ? 'text-amber-500' : 'text-gray-400'}`}
+              >
+                {editText.length}/{MAX_CHARS}
+              </span>
+              <div className="flex gap-2">
+                <button onClick={onEditCancel} className="text-xs text-gray-400 hover:text-gray-600">
+                  Cancel
+                </button>
+                <button
+                  onClick={onEditSave}
+                  className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <span className="text-sm text-gray-700 block">{q.text}</span>
+        )}
+      </div>
+
+      {/* Actions */}
+      {!isEditing && (
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <button
+            onClick={() => onEditStart(q)}
+            className="p-1.5 rounded text-gray-400 hover:text-gray-600"
+            title="Edit"
+          >
+            <Pencil size={14} />
+          </button>
+          <button
+            onClick={() => onDelete(q)}
+            className="p-1.5 rounded text-gray-400 hover:text-red-500"
+            title="Delete"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Main component ──────────────────────────────────────────────────────────
 
 export default function StarterQuestions() {
   const [manualQuestions, setManualQuestions] = useState<Question[]>(INITIAL_MANUAL)
@@ -61,8 +202,13 @@ export default function StarterQuestions() {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [toast, setToast] = useState<ToastState | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const editInputRef = useRef<HTMLInputElement>(null)
-  const newInputRef = useRef<HTMLInputElement>(null)
+  const editInputRef = useRef<HTMLInputElement | null>(null)
+  const newInputRef = useRef<HTMLInputElement | null>(null)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  )
 
   const displayedQuestions: Question[] = crOn
     ? [...aiQuestions, ...manualQuestions]
@@ -79,9 +225,7 @@ export default function StarterQuestions() {
   }, [editingId])
 
   useEffect(() => {
-    if (addingNew && newInputRef.current) {
-      newInputRef.current.focus()
-    }
+    if (addingNew && newInputRef.current) newInputRef.current.focus()
   }, [addingNew])
 
   function handleToggleCR() {
@@ -94,8 +238,7 @@ export default function StarterQuestions() {
       setCrOn(true)
       setCrStatus('generating')
       setTimeout(() => {
-        const toLoad = savedAiQuestions.length > 0 ? savedAiQuestions : AI_QUESTIONS
-        setAiQuestions(toLoad)
+        setAiQuestions(savedAiQuestions.length > 0 ? savedAiQuestions : AI_QUESTIONS)
         setCrStatus('ready')
       }, 1800)
     } else {
@@ -103,6 +246,25 @@ export default function StarterQuestions() {
       setAiQuestions([])
       setCrOn(false)
       setCrStatus('off')
+    }
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const activeId = String(active.id)
+    const overId = String(over.id)
+    const inAi = (id: string) => aiQuestions.some(q => q.id === id)
+
+    if (inAi(activeId) && inAi(overId)) {
+      setAiQuestions(prev =>
+        arrayMove(prev, prev.findIndex(q => q.id === activeId), prev.findIndex(q => q.id === overId))
+      )
+    } else if (!inAi(activeId) && !inAi(overId)) {
+      setManualQuestions(prev =>
+        arrayMove(prev, prev.findIndex(q => q.id === activeId), prev.findIndex(q => q.id === overId))
+      )
     }
   }
 
@@ -115,10 +277,10 @@ export default function StarterQuestions() {
     if (!editingId) return
     const trimmed = editText.trim()
     if (!trimmed) { cancelEdit(); return }
-    const updater = (prev: Question[]) =>
+    const update = (prev: Question[]) =>
       prev.map(q => (q.id === editingId ? { ...q, text: trimmed } : q))
-    setAiQuestions(updater)
-    setManualQuestions(updater)
+    setAiQuestions(update)
+    setManualQuestions(update)
     setEditingId(null)
     setEditText('')
   }
@@ -130,11 +292,8 @@ export default function StarterQuestions() {
 
   function deleteQuestion(q: Question) {
     const idx = displayedQuestions.findIndex(dq => dq.id === q.id)
-    if (q.source === 'ai') {
-      setAiQuestions(prev => prev.filter(pq => pq.id !== q.id))
-    } else {
-      setManualQuestions(prev => prev.filter(pq => pq.id !== q.id))
-    }
+    if (q.source === 'ai') setAiQuestions(prev => prev.filter(p => p.id !== q.id))
+    else setManualQuestions(prev => prev.filter(p => p.id !== q.id))
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
     setToast({ question: q, originalIndex: idx })
     toastTimerRef.current = setTimeout(() => setToast(null), 5000)
@@ -154,24 +313,10 @@ export default function StarterQuestions() {
     } else {
       setManualQuestions(prev => {
         const arr = [...prev]
-        const offset = aiQuestions.length
-        arr.splice(Math.max(0, originalIndex - offset), 0, question)
+        arr.splice(Math.max(0, originalIndex - aiQuestions.length), 0, question)
         return arr
       })
     }
-  }
-
-  function moveQuestion(id: string, direction: 'up' | 'down') {
-    const isAi = aiQuestions.some(q => q.id === id)
-    const setter = isAi ? setAiQuestions : setManualQuestions
-    setter(prev => {
-      const arr = [...prev]
-      const idx = arr.findIndex(q => q.id === id)
-      const swapIdx = direction === 'up' ? idx - 1 : idx + 1
-      if (swapIdx < 0 || swapIdx >= arr.length) return arr
-      ;[arr[idx], arr[swapIdx]] = [arr[swapIdx], arr[idx]]
-      return arr
-    })
   }
 
   function addQuestion() {
@@ -186,8 +331,7 @@ export default function StarterQuestions() {
   }
 
   function StatusChip() {
-    if (!crOn)
-      return <span className="text-xs text-gray-400 font-medium">Manual only</span>
+    if (!crOn) return <span className="text-xs text-gray-400 font-medium">Manual only</span>
     if (crStatus === 'generating')
       return (
         <span className="flex items-center gap-1 text-xs text-indigo-500 font-medium">
@@ -213,99 +357,15 @@ export default function StarterQuestions() {
     )
   }
 
-  function QuestionRow({ q, index }: { q: Question; index: number }) {
-    const isFirst = index === 0
-    const isLast = index === displayedQuestions.length - 1
-    const isEditing = editingId === q.id
-    const sameSourceAbove =
-      index > 0 && displayedQuestions[index - 1].source === q.source
-    const sameSourceBelow =
-      index < displayedQuestions.length - 1 &&
-      displayedQuestions[index + 1].source === q.source
-
-    return (
-      <div className="group flex items-start gap-2 px-4 py-3">
-        {q.source === 'ai' && (
-          <Sparkles size={13} className="text-indigo-400 shrink-0 mt-0.5" />
-        )}
-        {q.source === 'manual' && <span className="w-[13px] shrink-0" />}
-
-        <div className="flex-1 min-w-0">
-          {isEditing ? (
-            <div>
-              <input
-                ref={editInputRef}
-                value={editText}
-                onChange={e => setEditText(e.target.value.slice(0, MAX_CHARS))}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') saveEdit()
-                  if (e.key === 'Escape') cancelEdit()
-                }}
-                className="w-full text-sm border border-indigo-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-gray-800"
-              />
-              <div className="flex items-center justify-between mt-1.5">
-                <span
-                  className={`text-xs ${editText.length > MAX_CHARS * 0.85 ? 'text-amber-500' : 'text-gray-400'}`}
-                >
-                  {editText.length}/{MAX_CHARS}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={cancelEdit}
-                    className="text-xs text-gray-400 hover:text-gray-600"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={saveEdit}
-                    className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
-                  >
-                    Save
-                  </button>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <span className="text-sm text-gray-700 block">{q.text}</span>
-          )}
-        </div>
-
-        {!isEditing && (
-          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-            <button
-              onClick={() => moveQuestion(q.id, 'up')}
-              disabled={isFirst || !sameSourceAbove}
-              className="p-1 rounded text-gray-400 hover:text-gray-600 disabled:opacity-20 disabled:cursor-not-allowed"
-              title="Move up"
-            >
-              <ChevronUp size={14} />
-            </button>
-            <button
-              onClick={() => moveQuestion(q.id, 'down')}
-              disabled={isLast || !sameSourceBelow}
-              className="p-1 rounded text-gray-400 hover:text-gray-600 disabled:opacity-20 disabled:cursor-not-allowed"
-              title="Move down"
-            >
-              <ChevronDown size={14} />
-            </button>
-            <button
-              onClick={() => startEdit(q)}
-              className="p-1.5 rounded text-gray-400 hover:text-gray-600"
-              title="Edit"
-            >
-              <Pencil size={14} />
-            </button>
-            <button
-              onClick={() => deleteQuestion(q)}
-              className="p-1.5 rounded text-gray-400 hover:text-red-500"
-              title="Delete"
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
-        )}
-      </div>
-    )
+  const rowProps = {
+    editingId,
+    editText,
+    onEditStart: startEdit,
+    onEditChange: setEditText,
+    onEditSave: saveEdit,
+    onEditCancel: cancelEdit,
+    onDelete: deleteQuestion,
+    editInputRef,
   }
 
   return (
@@ -324,13 +384,12 @@ export default function StarterQuestions() {
         </div>
       </div>
 
-      {/* Empty state banner */}
+      {/* Empty state */}
       {totalCount === 0 && !addingNew && (
         <div className="mb-4 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/50 p-5 text-center">
           <p className="text-sm font-medium text-gray-700 mb-1">Help users start the conversation</p>
           <p className="text-xs text-gray-500 mb-3">
-            Add 3+ questions to increase first-message rate. Or let AI generate them from your
-            content.
+            Add 3+ questions to increase first-message rate. Or let AI generate them from your content.
           </p>
           <div className="flex gap-2 justify-center">
             <button
@@ -349,7 +408,7 @@ export default function StarterQuestions() {
         </div>
       )}
 
-      {/* AI-generated questions row */}
+      {/* AI questions toggle row */}
       <div
         className={`rounded-xl border p-4 mb-3 transition-colors ${
           crOn ? 'border-indigo-200 bg-indigo-50/30' : 'border-gray-200 bg-white'
@@ -388,7 +447,6 @@ export default function StarterQuestions() {
           </div>
         </div>
 
-        {/* No content warning */}
         {crOn && crStatus === 'no-content' && (
           <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2">
             <AlertCircle size={14} className="text-amber-500 mt-0.5 shrink-0" />
@@ -399,7 +457,6 @@ export default function StarterQuestions() {
           </div>
         )}
 
-        {/* Generating skeleton */}
         {crOn && crStatus === 'generating' && (
           <div className="mt-3 space-y-2">
             {[72, 56, 84, 60].map((w, i) => (
@@ -413,13 +470,46 @@ export default function StarterQuestions() {
         )}
       </div>
 
-      {/* Question list */}
+      {/* Question list with drag-and-drop */}
       {displayedQuestions.length > 0 && (
-        <div className="mb-3 rounded-xl border border-gray-200 bg-white divide-y divide-gray-100 overflow-hidden">
-          {displayedQuestions.map((q, i) => (
-            <QuestionRow key={q.id} q={q} index={i} />
-          ))}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="mb-3 rounded-xl border border-gray-200 bg-white overflow-hidden">
+            {/* AI group */}
+            {crOn && aiQuestions.length > 0 && (
+              <SortableContext
+                items={aiQuestions.map(q => q.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {aiQuestions.map(q => (
+                  <SortableQuestionRow key={q.id} q={q} {...rowProps} />
+                ))}
+              </SortableContext>
+            )}
+
+            {/* Divider between groups */}
+            {crOn && aiQuestions.length > 0 && manualQuestions.length > 0 && (
+              <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-50 border-y border-gray-100">
+                <span className="text-xs text-gray-400">Your questions</span>
+              </div>
+            )}
+
+            {/* Manual group */}
+            {manualQuestions.length > 0 && (
+              <SortableContext
+                items={manualQuestions.map(q => q.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {manualQuestions.map(q => (
+                  <SortableQuestionRow key={q.id} q={q} {...rowProps} />
+                ))}
+              </SortableContext>
+            )}
+          </div>
+        </DndContext>
       )}
 
       {/* Add question */}
@@ -433,10 +523,7 @@ export default function StarterQuestions() {
                 onChange={e => setNewText(e.target.value.slice(0, MAX_CHARS))}
                 onKeyDown={e => {
                   if (e.key === 'Enter') addQuestion()
-                  if (e.key === 'Escape') {
-                    setAddingNew(false)
-                    setNewText('')
-                  }
+                  if (e.key === 'Escape') { setAddingNew(false); setNewText('') }
                 }}
                 placeholder="Type a question your users often ask…"
                 className="w-full text-sm focus:outline-none text-gray-800 placeholder-gray-400"
@@ -449,10 +536,7 @@ export default function StarterQuestions() {
                 </span>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => {
-                      setAddingNew(false)
-                      setNewText('')
-                    }}
+                    onClick={() => { setAddingNew(false); setNewText('') }}
                     className="text-xs text-gray-400 hover:text-gray-600"
                   >
                     Cancel
@@ -483,9 +567,7 @@ export default function StarterQuestions() {
 
       {/* Count + preview toggle */}
       <div className="flex items-center justify-between mb-4">
-        <span
-          className={`text-xs font-medium ${atLimit ? 'text-amber-500' : 'text-gray-400'}`}
-        >
+        <span className={`text-xs font-medium ${atLimit ? 'text-amber-500' : 'text-gray-400'}`}>
           {atLimit
             ? `Limit reached (${totalCount}/${MAX_QUESTIONS})`
             : `${totalCount} of ${MAX_QUESTIONS} questions`}
