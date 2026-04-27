@@ -505,6 +505,13 @@ export default function StarterQuestions() {
     if (addingNew && newInputRef.current) newInputRef.current.focus()
   }, [addingNew])
 
+  useEffect(() => {
+    if (crOn && aiQuestions.length === 0 && crStatus === 'ready') {
+      setCrOn(false)
+      setCrStatus('off')
+    }
+  }, [aiQuestions, crOn, crStatus])
+
   /* ── Handlers ── */
 
   function handleToggleCR() {
