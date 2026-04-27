@@ -31,9 +31,12 @@ import {
   IconGripVertical,
   IconMessageQuestion,
   IconRefresh,
+  IconLock,
 } from '@tabler/icons-react'
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
+
+export type Tier = 'free' | 'premium' | 'enterprise'
 
 interface Question {
   id: string
@@ -221,6 +224,124 @@ function Tip({ text }: { text: string }) {
         <IconInfoCircle size={14} />
       </button>
     </Tooltip>
+  )
+}
+
+/* ── PlanTag ────────────────────────────────────────────────────────────── */
+
+function PlanTag({ plan }: { plan: 'Premium' | 'Enterprise' }) {
+  const isPremium = plan === 'Premium'
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 3,
+      background: isPremium ? T.primary100 : T.fg1,
+      color: isPremium ? T.primaryActive : '#fff',
+      borderRadius: 4, padding: '2px 6px',
+      font: `600 10px/14px ${T.font}`,
+      whiteSpace: 'nowrap', letterSpacing: '.02em',
+      flexShrink: 0,
+    }}>
+      <IconLock size={8} />
+      {plan}
+    </span>
+  )
+}
+
+/* ── Locked gate (Free tier) ────────────────────────────────────────────── */
+
+const DOCS_URL = 'https://docs.customgpt.ai/docs/how-context-rich-starter-questions-work'
+
+function LockedGate() {
+  return (
+    <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden' }}>
+
+      {/* Ghost preview — faded */}
+      <div style={{ opacity: 0.18, pointerEvents: 'none', userSelect: 'none' }}>
+        {/* AI toggle ghost */}
+        <div style={{
+          border: `1px solid ${T.divider}`, borderRadius: 6,
+          padding: '16px 20px', marginBottom: 12, background: '#fff',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <span style={{ font: `500 14px/20px ${T.font}`, color: T.fg1 }}>AI-generated questions</span>
+              <p style={{ font: `400 12px/16px ${T.font}`, color: T.fg3, margin: '2px 0 0' }}>Auto-created from your content</p>
+            </div>
+            <div style={{
+              width: 36, height: 20, borderRadius: 1000,
+              background: T.gray300, position: 'relative', flexShrink: 0,
+            }}>
+              <span style={{
+                position: 'absolute', top: 3, left: 3,
+                width: 14, height: 14, borderRadius: '50%', background: '#fff',
+              }} />
+            </div>
+          </div>
+        </div>
+        {/* Question rows ghost */}
+        <div style={{ border: `1px solid ${T.divider}`, borderRadius: 6, background: '#fff' }}>
+          {INITIAL_MANUAL.map((q, i) => (
+            <div key={q.id} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 16px',
+              borderBottom: i < INITIAL_MANUAL.length - 1 ? `1px solid ${T.divider}` : 'none',
+            }}>
+              <IconGripVertical size={16} style={{ color: T.fg4, flexShrink: 0 }} />
+              <span style={{ width: 28, flexShrink: 0 }} />
+              <span style={{ font: `400 14px/20px ${T.font}`, color: T.fg2 }}>{q.text}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Lock overlay */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(255,255,255,0.92)',
+        gap: 16, padding: 32,
+        textAlign: 'center',
+      }}>
+        <div style={{
+          width: 48, height: 48, borderRadius: 12,
+          background: T.primary100, color: T.primary,
+          display: 'grid', placeItems: 'center', flexShrink: 0,
+        }}>
+          <IconLock size={22} />
+        </div>
+        <div>
+          <h3 style={{ font: `600 15px/22px ${T.font}`, color: T.fg1, margin: '0 0 6px' }}>
+            Starter Questions is a Premium feature
+          </h3>
+          <p style={{ font: `400 13px/18px ${T.font}`, color: T.fg3, margin: 0, maxWidth: 320 }}>
+            Add up to 4 questions to guide users from the very first message.
+            On Enterprise, AI generates them automatically from your knowledge base.
+          </p>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <button type="button" style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            font: `600 13px/18px ${T.font}`, color: '#fff',
+            background: T.primary, border: 'none',
+            borderRadius: 8, padding: '9px 20px',
+            cursor: 'pointer', boxShadow: T.primaryShadow,
+          }}
+            onMouseEnter={e => (e.currentTarget.style.background = T.primaryHover)}
+            onMouseLeave={e => (e.currentTarget.style.background = T.primary)}>
+            <IconBolt size={14} /> Upgrade to Premium
+          </button>
+          <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" style={{
+            font: `500 13px/18px ${T.font}`, color: T.fg3,
+            textDecoration: 'none',
+          }}
+            onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = T.fg2)}
+            onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = T.fg3)}>
+            Learn more ↗
+          </a>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -460,7 +581,7 @@ function SortableRow(props: RowProps) {
 
 /* ── Main component ─────────────────────────────────────────────────────── */
 
-export default function StarterQuestions() {
+export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier }) {
   const [manualQuestions, setManualQuestions] = useState<Question[]>(INITIAL_MANUAL)
   const [aiQuestions, setAiQuestions]         = useState<Question[]>([])
   const [crOn, setCrOn]               = useState(false)
@@ -501,6 +622,12 @@ export default function StarterQuestions() {
   useEffect(() => {
     if (addingNew && newInputRef.current) newInputRef.current.focus()
   }, [addingNew])
+
+  useEffect(() => {
+    if (tier !== 'enterprise' && crOn) {
+      setAiQuestions([]); setCrOn(false); setCrStatus('off')
+    }
+  }, [tier])
 
   /* ── Handlers ── */
 
@@ -729,21 +856,29 @@ export default function StarterQuestions() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <span style={{
           width: 36, height: 36, borderRadius: 8,
-          background: T.primary100, color: T.primary,
+          background: tier === 'free' ? T.gray100 : T.primary100,
+          color: tier === 'free' ? T.fg4 : T.primary,
           display: 'grid', placeItems: 'center', flexShrink: 0,
         }}>
           <IconMessageQuestion size={18} />
         </span>
-        <div>
-          <h2 style={{ font: `600 16px/24px ${T.font}`, color: T.fg1, margin: 0 }}>
-            Starter questions
-          </h2>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <h2 style={{ font: `600 16px/24px ${T.font}`, color: T.fg1, margin: 0 }}>
+              Starter questions
+            </h2>
+            {tier === 'free' && <PlanTag plan="Premium" />}
+          </div>
           <p style={{ ...helper12, margin: 0 }}>
             Shown to users when they open your agent
           </p>
         </div>
         <Tip text="Add up to 4 questions to help users start the conversation." />
       </div>
+
+      {/* Free tier — locked gate */}
+      {tier === 'free' ? <LockedGate /> : (
+      <>
 
       {/* AI toggle card */}
       <div style={{
@@ -757,16 +892,18 @@ export default function StarterQuestions() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ font: `500 14px/20px ${T.font}`, color: T.fg1 }}>
+              <span style={{ font: `500 14px/20px ${T.font}`, color: tier === 'premium' ? T.fg3 : T.fg1 }}>
                 AI-generated questions
               </span>
-              <Tip text="Automatically generated from your uploaded documents and URLs." />
+              {tier === 'premium'
+                ? <PlanTag plan="Enterprise" />
+                : <Tip text="Automatically generated from your uploaded documents and URLs." />}
             </div>
             <p style={{ ...helper12, margin: '2px 0 0' }}>Auto-created from your content</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            <StatusChip />
-            {crOn && crStatus === 'ready' && (
+            {tier === 'enterprise' && <StatusChip />}
+            {tier === 'enterprise' && crOn && crStatus === 'ready' && (
               <button type="button" onClick={handleRegenerate}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 4,
@@ -783,8 +920,7 @@ export default function StarterQuestions() {
                 <IconRefresh size={13} /> Regenerate
               </button>
             )}
-            {/* Retry button shown on generation failure */}
-            {crOn && crStatus === 'error' && (
+            {tier === 'enterprise' && crOn && crStatus === 'error' && (
               <button type="button" onClick={handleRegenerate}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 4,
@@ -800,40 +936,63 @@ export default function StarterQuestions() {
                 <IconRefresh size={13} /> Retry
               </button>
             )}
-            {/* Toggle */}
-            <button
-              type="button"
-              role="switch"
-              aria-checked={crOn}
-              aria-label="Enable AI-generated starter questions"
-              onClick={handleToggleCR}
-              style={{
-                position: 'relative',
-                width: 36, height: 20,
-                borderRadius: 1000,
-                background: crOn ? T.primary : T.gray300,
-                border: 'none', cursor: 'pointer', padding: 0,
-                transition: 'background 0.15s',
-                flexShrink: 0,
-                outline: 'none',
-              }}
-            >
-              <span style={{
-                position: 'absolute',
-                top: 3, left: crOn ? 19 : 3,
-                width: 14, height: 14,
-                borderRadius: '50%', background: '#fff',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
-                transition: 'left 0.15s',
-              }} />
-            </button>
+            {/* Toggle — disabled on Premium */}
+            {tier === 'premium' ? (
+              <Tooltip label="Upgrade to Enterprise to use AI questions" side="top" width={200}>
+                <button type="button" disabled aria-disabled="true"
+                  style={{
+                    position: 'relative', width: 36, height: 20,
+                    borderRadius: 1000, background: T.gray200,
+                    border: 'none', cursor: 'not-allowed', padding: 0,
+                    flexShrink: 0, outline: 'none', opacity: 0.6,
+                  }}>
+                  <span style={{
+                    position: 'absolute', top: 3, left: 3,
+                    width: 14, height: 14,
+                    borderRadius: '50%', background: '#fff',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
+                  }} />
+                </button>
+              </Tooltip>
+            ) : (
+              <button
+                type="button" role="switch"
+                aria-checked={crOn}
+                aria-label="Enable AI-generated starter questions"
+                onClick={handleToggleCR}
+                style={{
+                  position: 'relative', width: 36, height: 20,
+                  borderRadius: 1000,
+                  background: crOn ? T.primary : T.gray300,
+                  border: 'none', cursor: 'pointer', padding: 0,
+                  transition: 'background 0.15s', flexShrink: 0, outline: 'none',
+                }}
+              >
+                <span style={{
+                  position: 'absolute', top: 3, left: crOn ? 19 : 3,
+                  width: 14, height: 14,
+                  borderRadius: '50%', background: '#fff',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
+                  transition: 'left 0.15s',
+                }} />
+              </button>
+            )}
           </div>
         </div>
 
         {/* Priming copy — visible only when AI is off */}
-        {!crOn && (
+        {!crOn && tier !== 'premium' && (
           <p style={{ ...helper12, margin: '10px 0 0', color: T.fg4 }}>
             Generates 4 questions from your content. You can edit or regenerate any of them.
+          </p>
+        )}
+        {tier === 'premium' && (
+          <p style={{ ...helper12, margin: '10px 0 0', color: T.fg4 }}>
+            AI question generation requires an Enterprise plan.{' '}
+            <a href={DOCS_URL} target="_blank" rel="noopener noreferrer"
+              style={{ color: T.fg3, textDecoration: 'underline' }}>
+              Learn more ↗
+            </a>
           </p>
         )}
 
@@ -1033,6 +1192,9 @@ export default function StarterQuestions() {
             <IconX size={14} />
           </button>
         </div>
+      )}
+
+      </>
       )}
     </>
   )
