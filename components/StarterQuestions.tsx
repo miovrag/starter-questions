@@ -985,20 +985,19 @@ export default function StarterQuestions() {
           ) : (
             <button type="button" onClick={() => setAddingNew(true)}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                font: `600 13px/18px ${T.font}`, color: T.primary,
-                background: 'none', border: 'none', cursor: 'pointer', padding: 0,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                font: `500 13px/18px ${T.font}`, color: T.primary,
+                background: 'transparent',
+                border: '1px solid transparent',
+                borderRadius: 6, padding: '7px 12px',
+                cursor: 'pointer',
+                transition: 'background 0.12s, color 0.12s',
               }}
-              onMouseEnter={e => (e.currentTarget.style.color = T.primaryHover)}
-              onMouseLeave={e => (e.currentTarget.style.color = T.primary)}>
-              <span style={{
-                width: 24, height: 24, borderRadius: '50%',
-                border: `1.5px solid ${T.primary}`,
-                display: 'grid', placeItems: 'center',
-                flexShrink: 0,
-              }}>
-                <IconPlus size={13} />
-              </span>
+              onMouseEnter={e => (e.currentTarget.style.background = T.primary100)}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              onMouseDown={e => { e.currentTarget.style.background = T.primary200; e.currentTarget.style.color = T.primaryActive }}
+              onMouseUp={e => { e.currentTarget.style.background = T.primary100; e.currentTarget.style.color = T.primary }}>
+              <IconPlus size={14} />
               Add a starter question
             </button>
           )}
