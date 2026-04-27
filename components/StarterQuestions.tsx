@@ -31,6 +31,7 @@ import {
   IconGripVertical,
   IconMessageQuestion,
   IconRefresh,
+  IconCheck,
 } from '@tabler/icons-react'
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
@@ -236,26 +237,155 @@ function LockIcon() {
   )
 }
 
-function PlanTag({ plan }: { plan: 'Premium' | 'Enterprise' }) {
+function PlanTag({ plan, onClick }: { plan: 'Premium' | 'Enterprise'; onClick?: () => void }) {
+  const [hov, setHov] = useState(false)
   return (
-    <span style={{
-      display: 'inline-flex',
-      height: 24,
-      padding: '8px 12px',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 6,
-      borderRadius: 999,
-      background: '#E3E1FC',
-      color: T.primaryActive,
-      font: `600 11px/16px ${T.font}`,
-      whiteSpace: 'nowrap',
-      flexShrink: 0,
-      boxSizing: 'border-box' as const,
-    }}>
+    <span
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={onClick ? e => { if (e.key === 'Enter' || e.key === ' ') onClick() } : undefined}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: 'inline-flex',
+        height: 24,
+        padding: '8px 12px',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 6,
+        borderRadius: 999,
+        background: hov && onClick ? T.primary200 : '#E3E1FC',
+        color: T.primaryActive,
+        font: `600 11px/16px ${T.font}`,
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+        boxSizing: 'border-box' as const,
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'background 0.12s',
+        userSelect: 'none',
+      }}>
       <LockIcon />
       {plan}
     </span>
+  )
+}
+
+/* ── Upsell modal ───────────────────────────────────────────────────────── */
+
+const UPSELL: Record<'Premium' | 'Enterprise', {
+  title: string
+  description: string
+  features: string[]
+  cta: string
+}> = {
+  Premium: {
+    title: 'Upgrade to Premium',
+    description: 'Add up to 4 starter questions that guide users from the very first message — reducing drop-off and setting context immediately.',
+    features: [
+      'Up to 4 custom starter questions',
+      'Drag-and-drop reordering',
+      'Inline editing with undo',
+    ],
+    cta: 'Upgrade to Premium',
+  },
+  Enterprise: {
+    title: 'Upgrade to Enterprise',
+    description: 'Let AI generate starter questions directly from your knowledge base, tuned to your audience and regeneratable on demand.',
+    features: [
+      'AI questions from your knowledge base',
+      'Audience guidance & regeneration',
+      'Per-question regeneration',
+    ],
+    cta: 'Upgrade to Enterprise',
+  },
+}
+
+function UpsellModal({ plan, onClose }: { plan: 'Premium' | 'Enterprise'; onClose: () => void }) {
+  const content = UPSELL[plan]
+  return (
+    <>
+      <div onClick={onClose}
+        style={{ position: 'fixed', inset: 0, background: 'rgba(23,23,23,0.4)', zIndex: 60 }} />
+      <div style={{
+        position: 'fixed', top: '50%', left: '50%',
+        background: '#fff', borderRadius: 12,
+        padding: 28, width: 400,
+        maxWidth: 'calc(100vw - 32px)',
+        boxShadow: T.shadowModal,
+        zIndex: 61,
+        animation: 'modalIn 0.2s cubic-bezier(0.2,0.8,0.2,1) forwards',
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 10,
+            background: '#E3E1FC',
+            display: 'grid', placeItems: 'center', flexShrink: 0,
+          }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 16 16" fill="none">
+              <path d="M5.33337 7.33333V4.66667C5.33337 3.19391 6.52728 2 8.00004 2C9.4728 2 10.6667 3.19391 10.6667 4.66667V7.33333M8.66671 10.6667C8.66671 11.0349 8.36823 11.3333 8.00004 11.3333C7.63185 11.3333 7.33337 11.0349 7.33337 10.6667C7.33337 10.2985 7.63185 10 8.00004 10C8.36823 10 8.66671 10.2985 8.66671 10.6667ZM4.66671 14H11.3334C12.0698 14 12.6667 13.403 12.6667 12.6667V8.66667C12.6667 7.93029 12.0698 7.33333 11.3334 7.33333H4.66671C3.93033 7.33333 3.33337 7.93029 3.33337 8.66667V12.6667C3.33337 13.403 3.93033 14 4.66671 14Z" stroke="#7367F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <button type="button" onClick={onClose}
+            style={{ color: T.fg4, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4 }}
+            onMouseEnter={e => (e.currentTarget.style.color = T.fg2)}
+            onMouseLeave={e => (e.currentTarget.style.color = T.fg4)}>
+            <IconX size={16} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <h3 style={{ font: `600 17px/24px ${T.font}`, color: T.fg1, margin: '0 0 8px' }}>
+          {content.title}
+        </h3>
+        <p style={{ font: `400 14px/20px ${T.font}`, color: T.fg3, margin: '0 0 20px' }}>
+          {content.description}
+        </p>
+
+        {/* Feature list */}
+        <ul style={{ listStyle: 'none', margin: '0 0 24px', padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {content.features.map(f => (
+            <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{
+                width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
+                background: '#E3E1FC', display: 'grid', placeItems: 'center',
+              }}>
+                <IconCheck size={11} style={{ color: T.primary }} />
+              </span>
+              <span style={{ font: `400 13px/18px ${T.font}`, color: T.fg2 }}>{f}</span>
+            </li>
+          ))}
+        </ul>
+
+        {/* CTAs */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button type="button"
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              font: `600 14px/20px ${T.font}`, color: '#fff',
+              background: T.primary, border: 'none',
+              borderRadius: 8, padding: '10px 20px',
+              cursor: 'pointer', boxShadow: T.primaryShadow,
+              width: '100%',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = T.primaryHover)}
+            onMouseLeave={e => (e.currentTarget.style.background = T.primary)}>
+            <IconBolt size={15} /> {content.cta}
+          </button>
+          <a href={DOCS_URL} target="_blank" rel="noopener noreferrer"
+            style={{
+              display: 'block', textAlign: 'center',
+              font: `500 13px/18px ${T.font}`, color: T.fg3,
+              textDecoration: 'none',
+            }}
+            onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = T.fg2)}
+            onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = T.fg3)}>
+            Learn more ↗
+          </a>
+        </div>
+      </div>
+    </>
   )
 }
 
@@ -263,7 +393,7 @@ function PlanTag({ plan }: { plan: 'Premium' | 'Enterprise' }) {
 
 const DOCS_URL = 'https://docs.customgpt.ai/docs/how-context-rich-starter-questions-work'
 
-function LockedGate() {
+function LockedGate({ onUpgrade }: { onUpgrade: () => void }) {
   return (
     <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden' }}>
 
@@ -342,7 +472,8 @@ function LockedGate() {
             cursor: 'pointer', boxShadow: T.primaryShadow,
           }}
             onMouseEnter={e => (e.currentTarget.style.background = T.primaryHover)}
-            onMouseLeave={e => (e.currentTarget.style.background = T.primary)}>
+            onMouseLeave={e => (e.currentTarget.style.background = T.primary)}
+            onClick={onUpgrade}>
             <IconBolt size={14} /> Upgrade to Premium
           </button>
           <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" style={{
@@ -613,6 +744,7 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
   const [addingNew, setAddingNew] = useState(false)
   const [newText, setNewText]     = useState('')
   const [aiHint, setAiHint] = useState('')
+  const [upsellPlan, setUpsellPlan] = useState<'Premium' | 'Enterprise' | null>(null)
   const [toast, setToast] = useState<ToastState | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const editInputRef  = useRef<HTMLInputElement | null>(null)
@@ -815,6 +947,9 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
         @keyframes tooltipIn{from{opacity:0}to{opacity:1}}
       `}</style>
 
+      {/* Upsell modal */}
+      {upsellPlan && <UpsellModal plan={upsellPlan} onClose={() => setUpsellPlan(null)} />}
+
       {/* AI guard modal */}
       {showAiGuard && (
         <>
@@ -881,7 +1016,7 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
             <h2 style={{ font: `600 16px/24px ${T.font}`, color: T.fg1, margin: 0 }}>
               Starter questions
             </h2>
-            {tier === 'free' && <PlanTag plan="Premium" />}
+            {tier === 'free' && <PlanTag plan="Premium" onClick={() => setUpsellPlan('Premium')} />}
           </div>
           <p style={{ ...helper12, margin: 0 }}>
             Shown to users when they open your agent
@@ -891,7 +1026,7 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
       </div>
 
       {/* Free tier — locked gate */}
-      {tier === 'free' ? <LockedGate /> : (
+      {tier === 'free' ? <LockedGate onUpgrade={() => setUpsellPlan('Premium')} /> : (
       <>
 
       {/* AI toggle card */}
@@ -910,7 +1045,7 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
                 AI-generated questions
               </span>
               {tier === 'premium'
-                ? <PlanTag plan="Enterprise" />
+                ? <PlanTag plan="Enterprise" onClick={() => setUpsellPlan('Enterprise')} />
                 : <Tip text="Automatically generated from your uploaded documents and URLs." />}
             </div>
             <p style={{ ...helper12, margin: '2px 0 0' }}>Auto-created from your content</p>
