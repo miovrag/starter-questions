@@ -309,42 +309,47 @@ function UpsellModal({ plan, onClose }: { plan: 'Premium' | 'Enterprise'; onClos
         style={{ position: 'fixed', inset: 0, background: 'rgba(23,23,23,0.4)', zIndex: 60 }} />
       <div style={{
         position: 'fixed', top: '50%', left: '50%',
-        background: '#fff', borderRadius: 12,
-        padding: 28, width: 400,
+        display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 32,
+        padding: 32, width: 400,
         maxWidth: 'calc(100vw - 32px)',
+        borderRadius: 12,
+        borderTop: '2px solid #FFF',
+        background: '#FAF8F8',
         boxShadow: T.shadowModal,
         zIndex: 61,
         animation: 'modalIn 0.2s cubic-bezier(0.2,0.8,0.2,1) forwards',
       }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 10,
-            background: '#E3E1FC',
-            display: 'grid', placeItems: 'center', flexShrink: 0,
-          }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 16 16" fill="none">
-              <path d="M5.33337 7.33333V4.66667C5.33337 3.19391 6.52728 2 8.00004 2C9.4728 2 10.6667 3.19391 10.6667 4.66667V7.33333M8.66671 10.6667C8.66671 11.0349 8.36823 11.3333 8.00004 11.3333C7.63185 11.3333 7.33337 11.0349 7.33337 10.6667C7.33337 10.2985 7.63185 10 8.00004 10C8.36823 10 8.66671 10.2985 8.66671 10.6667ZM4.66671 14H11.3334C12.0698 14 12.6667 13.403 12.6667 12.6667V8.66667C12.6667 7.93029 12.0698 7.33333 11.3334 7.33333H4.66671C3.93033 7.33333 3.33337 7.93029 3.33337 8.66667V12.6667C3.33337 13.403 3.93033 14 4.66671 14Z" stroke="#7367F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+        {/* Intro: icon + close + title + description */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 12, alignSelf: 'stretch' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', alignSelf: 'stretch' }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 10,
+              background: '#E3E1FC',
+              display: 'grid', placeItems: 'center', flexShrink: 0,
+            }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 16 16" fill="none">
+                <path d="M5.33337 7.33333V4.66667C5.33337 3.19391 6.52728 2 8.00004 2C9.4728 2 10.6667 3.19391 10.6667 4.66667V7.33333M8.66671 10.6667C8.66671 11.0349 8.36823 11.3333 8.00004 11.3333C7.63185 11.3333 7.33337 11.0349 7.33337 10.6667C7.33337 10.2985 7.63185 10 8.00004 10C8.36823 10 8.66671 10.2985 8.66671 10.6667ZM4.66671 14H11.3334C12.0698 14 12.6667 13.403 12.6667 12.6667V8.66667C12.6667 7.93029 12.0698 7.33333 11.3334 7.33333H4.66671C3.93033 7.33333 3.33337 7.93029 3.33337 8.66667V12.6667C3.33337 13.403 3.93033 14 4.66671 14Z" stroke="#7367F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <button type="button" onClick={onClose}
+              style={{ color: T.fg4, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4 }}
+              onMouseEnter={e => (e.currentTarget.style.color = T.fg2)}
+              onMouseLeave={e => (e.currentTarget.style.color = T.fg4)}>
+              <IconX size={16} />
+            </button>
           </div>
-          <button type="button" onClick={onClose}
-            style={{ color: T.fg4, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4 }}
-            onMouseEnter={e => (e.currentTarget.style.color = T.fg2)}
-            onMouseLeave={e => (e.currentTarget.style.color = T.fg4)}>
-            <IconX size={16} />
-          </button>
+          <div>
+            <h3 style={{ font: `600 17px/24px ${T.font}`, color: T.fg1, margin: '0 0 6px' }}>
+              {content.title}
+            </h3>
+            <p style={{ font: `400 14px/20px ${T.font}`, color: T.fg3, margin: 0 }}>
+              {content.description}
+            </p>
+          </div>
         </div>
 
-        {/* Body */}
-        <h3 style={{ font: `600 17px/24px ${T.font}`, color: T.fg1, margin: '0 0 8px' }}>
-          {content.title}
-        </h3>
-        <p style={{ font: `400 14px/20px ${T.font}`, color: T.fg3, margin: '0 0 20px' }}>
-          {content.description}
-        </p>
-
         {/* Feature list */}
-        <ul style={{ listStyle: 'none', margin: '0 0 24px', padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 12, alignSelf: 'stretch' }}>
           {content.features.map(f => (
             <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{
@@ -359,7 +364,7 @@ function UpsellModal({ plan, onClose }: { plan: 'Premium' | 'Enterprise'; onClos
         </ul>
 
         {/* CTAs */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignSelf: 'stretch' }}>
           <button type="button"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
