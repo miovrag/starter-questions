@@ -31,7 +31,6 @@ import {
   IconGripVertical,
   IconMessageQuestion,
   IconRefresh,
-  IconLock,
 } from '@tabler/icons-react'
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
@@ -229,19 +228,32 @@ function Tip({ text }: { text: string }) {
 
 /* ── PlanTag ────────────────────────────────────────────────────────────── */
 
+function LockIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
+      <path d="M5.33337 7.33333V4.66667C5.33337 3.19391 6.52728 2 8.00004 2C9.4728 2 10.6667 3.19391 10.6667 4.66667V7.33333M8.66671 10.6667C8.66671 11.0349 8.36823 11.3333 8.00004 11.3333C7.63185 11.3333 7.33337 11.0349 7.33337 10.6667C7.33337 10.2985 7.63185 10 8.00004 10C8.36823 10 8.66671 10.2985 8.66671 10.6667ZM4.66671 14H11.3334C12.0698 14 12.6667 13.403 12.6667 12.6667V8.66667C12.6667 7.93029 12.0698 7.33333 11.3334 7.33333H4.66671C3.93033 7.33333 3.33337 7.93029 3.33337 8.66667V12.6667C3.33337 13.403 3.93033 14 4.66671 14Z" stroke="#7367F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  )
+}
+
 function PlanTag({ plan }: { plan: 'Premium' | 'Enterprise' }) {
-  const isPremium = plan === 'Premium'
   return (
     <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 3,
-      background: isPremium ? T.primary100 : T.fg1,
-      color: isPremium ? T.primaryActive : '#fff',
-      borderRadius: 4, padding: '2px 6px',
-      font: `600 10px/14px ${T.font}`,
-      whiteSpace: 'nowrap', letterSpacing: '.02em',
+      display: 'inline-flex',
+      height: 24,
+      padding: '8px 12px',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 6,
+      borderRadius: 999,
+      background: '#E3E1FC',
+      color: T.primaryActive,
+      font: `600 11px/16px ${T.font}`,
+      whiteSpace: 'nowrap',
       flexShrink: 0,
+      boxSizing: 'border-box' as const,
     }}>
-      <IconLock size={8} />
+      <LockIcon />
       {plan}
     </span>
   )
@@ -308,7 +320,9 @@ function LockedGate() {
           background: T.primary100, color: T.primary,
           display: 'grid', placeItems: 'center', flexShrink: 0,
         }}>
-          <IconLock size={22} />
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 16 16" fill="none">
+            <path d="M5.33337 7.33333V4.66667C5.33337 3.19391 6.52728 2 8.00004 2C9.4728 2 10.6667 3.19391 10.6667 4.66667V7.33333M8.66671 10.6667C8.66671 11.0349 8.36823 11.3333 8.00004 11.3333C7.63185 11.3333 7.33337 11.0349 7.33337 10.6667C7.33337 10.2985 7.63185 10 8.00004 10C8.36823 10 8.66671 10.2985 8.66671 10.6667ZM4.66671 14H11.3334C12.0698 14 12.6667 13.403 12.6667 12.6667V8.66667C12.6667 7.93029 12.0698 7.33333 11.3334 7.33333H4.66671C3.93033 7.33333 3.33337 7.93029 3.33337 8.66667V12.6667C3.33337 13.403 3.93033 14 4.66671 14Z" stroke="#7367F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
         </div>
         <div>
           <h3 style={{ font: `600 15px/22px ${T.font}`, color: T.fg1, margin: '0 0 6px' }}>
