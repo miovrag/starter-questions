@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, CSSProperties } from 'react'
+import { useState, useRef, useEffect, useContext, createContext, CSSProperties } from 'react'
 import {
   DndContext,
   closestCenter,
@@ -32,7 +32,7 @@ import {
   IconArrowBackUp,
   IconGripVertical,
   IconMessageQuestion,
-  IconCheckbox,
+  IconRefresh,
 } from '@tabler/icons-react'
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
@@ -52,65 +52,94 @@ interface ToastState {
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
 
-const MAX_QUESTIONS = 8
+const MAX_QUESTIONS = 4
 const MAX_CHARS = 80
 
-const AI_QUESTIONS: Question[] = [
-  { id: 'ai-1', text: 'What are the key growth drivers in the analytical HPLC market?', source: 'ai' },
-  { id: 'ai-2', text: 'Which regions have the highest LC/MS adoption rate?', source: 'ai' },
-  { id: 'ai-3', text: 'How does column chemistry affect separation efficiency?', source: 'ai' },
-  { id: 'ai-4', text: 'Who are the leading vendors in the GC/MS equipment market?', source: 'ai' },
+const AI_QUESTION_SETS: Question[][] = [
+  [
+    { id: 'ai-1', text: 'What are the key growth drivers in the analytical HPLC market?', source: 'ai' },
+    { id: 'ai-2', text: 'Which regions have the highest LC/MS adoption rate?', source: 'ai' },
+    { id: 'ai-3', text: 'How does column chemistry affect separation efficiency?', source: 'ai' },
+    { id: 'ai-4', text: 'Who are the leading vendors in the GC/MS equipment market?', source: 'ai' },
+  ],
+  [
+    { id: 'ai-5', text: 'What is the forecasted CAGR for the global HPLC market through 2030?', source: 'ai' },
+    { id: 'ai-6', text: 'How do regulatory changes affect LC/MS instrument demand?', source: 'ai' },
+    { id: 'ai-7', text: 'What are the main applications driving GC/MS market growth?', source: 'ai' },
+    { id: 'ai-8', text: 'Which end-user segments spend the most on analytical columns?', source: 'ai' },
+  ],
+]
+
+const AI_POOL: string[] = [
+  'What is the total addressable market for HPLC instruments in pharma?',
+  'How has mass spectrometry adoption changed in the last five years?',
+  'What are the top competitive differentiators for GC/MS vendors?',
+  'How does column selectivity influence method development time?',
+  'What role does automation play in modern analytical workflows?',
+  'Which emerging applications are driving demand for high-resolution LC/MS?',
+  'How are supply chain disruptions affecting analytical instrument pricing?',
+  'What is the market share breakdown between benchtop and portable GC systems?',
 ]
 
 const INITIAL_MANUAL: Question[] = [
   { id: 'q-1', text: 'What is the global market for Analytical HPLC?', source: 'manual' },
   { id: 'q-2', text: 'Tell me about the LC/MS market.', source: 'manual' },
   { id: 'q-3', text: 'What is the combined GC and GC/MS market by geography?', source: 'manual' },
-  { id: 'q-4', text: "What's the size of the analytical HPLC columns market?", source: 'manual' },
 ]
 
-/* ── Design tokens (inline) ─────────────────────────────────────────────── */
+/* ── Design tokens ──────────────────────────────────────────────────────── */
 
 const T = {
-  primary:      '#7367F0',
-  primaryHover: '#685DD8',
-  primary8:     'rgba(115,103,240,0.08)',
-  primary12:    'rgba(115,103,240,0.12)',
-  primary24:    'rgba(115,103,240,0.24)',
-  primaryShadow:'0 2px 6px rgba(115,103,240,0.35)',
-  fg1:   '#171717',
-  fg2:   '#404040',
-  fg3:   '#737373',
-  fg4:   '#A3A3A3',
-  gray50:'#FAFAFA',
+  // Brand
+  primary:       '#7367F0',
+  primaryHover:  '#685DD8',
+  primaryActive: '#5C53C0',
+  primary8:      'rgba(115,103,240,0.08)',
+  primary16:     'rgba(115,103,240,0.16)',
+  primary24:     'rgba(115,103,240,0.24)',
+  primary100:    '#EAE8FD',  // --cg-primary-100
+  primary200:    '#D5D1FB',  // --cg-primary-200
+  primaryShadow: '0 2px 6px rgba(115,103,240,0.35)',
+  // Neutrals
+  fg1:    '#171717',
+  fg2:    '#404040',
+  fg3:    '#737373',
+  fg4:    '#A3A3A3',
+  gray50: '#FAFAFA',
   gray100:'#F5F5F5',
   gray200:'#E5E5E5',
   gray300:'#D4D4D4',
-  divider:'#EBE9F1',
-  border: '#DBDADE',
-  success:'#28C76F',
-  success12:'rgba(40,199,111,0.12)',
+  divider:'#E5E5E5',   // --cg-divider
+  border: '#E5E5E5',   // --cg-gray-200
+  hoverBg:'rgba(38,38,38,0.04)',  // --cg-gray-hover-menu
+  // Semantic
+  success:    '#28C76F',
+  success100: '#D6F5E3',  // --cg-success-100
   successText:'#1F9C57',
-  warning:'#FF9F43',
-  warning12:'rgba(255,159,67,0.12)',
+  warning:    '#FF9F43',
+  warning100: '#FFE4C4',  // --cg-warning-100
   warningText:'#C27B34',
-  danger: '#EA5455',
-  cardShadow: '0 4px 24px rgba(75,70,92,0.08)',
+  danger:     '#EA5455',
+  danger100:  '#FBDCDC',  // --cg-danger-100
+  // Shadows (--cg-shadow-*)
+  shadowSm:   '0 2px 4px rgba(23,23,23,0.08)',
+  shadowCard: '0 4px 24px rgba(23,23,23,0.06)',
+  shadowModal:'0 8px 32px rgba(23,23,23,0.16)',
+  // Type
   font: '"Inter", system-ui, -apple-system, sans-serif',
 } as const
 
-/* ── Shared micro-styles ────────────────────────────────────────────────── */
-
-const label12: CSSProperties = { font: `500 12px/16px ${T.font}`, color: T.fg2 }
 const helper12: CSSProperties = { font: `400 12px/16px ${T.font}`, color: T.fg3 }
 const body14: CSSProperties   = { font: `400 14px/20px ${T.font}`, color: T.fg2 }
 
-/* ── Badge ──────────────────────────────────────────────────────────────── */
+const DraggingCtx = createContext(false)
+
+/* ── AiBadge ────────────────────────────────────────────────────────────── */
 
 function AiBadge() {
   return (
     <span style={{
-      background: T.primary12,
+      background: T.primary100,
       color: '#5C53C0',
       borderRadius: 4,
       padding: '1px 6px',
@@ -125,31 +154,75 @@ function AiBadge() {
 
 /* ── Tooltip ────────────────────────────────────────────────────────────── */
 
-function Tip({ text }: { text: string }) {
+function Tooltip({ label, children, side = 'top', width }: {
+  label: string
+  children: React.ReactNode
+  side?: 'top' | 'bottom' | 'right'
+  width?: number
+}) {
+  const anyDragging = useContext(DraggingCtx)
   const [vis, setVis] = useState(false)
+
+  const position: CSSProperties =
+    side === 'top'    ? { bottom: 'calc(100% + 7px)', left: '50%', transform: 'translateX(-50%)' } :
+    side === 'bottom' ? { top:    'calc(100% + 7px)', left: '50%', transform: 'translateX(-50%)' } :
+                        { left:   'calc(100% + 7px)', top:  '50%', transform: 'translateY(-50%)' }
+
+  const arrowPos: CSSProperties =
+    side === 'top'    ? { bottom: -3, left: '50%', transform: 'translateX(-50%) rotate(45deg)' } :
+    side === 'bottom' ? { top:    -3, left: '50%', transform: 'translateX(-50%) rotate(45deg)' } :
+                        { left:   -3, top:  '50%', transform: 'translateY(-50%) rotate(45deg)' }
+
   return (
-    <span style={{ position: 'relative', display: 'inline-flex' }}>
-      <button
-        type="button"
-        onMouseEnter={() => setVis(true)}
-        onMouseLeave={() => setVis(false)}
-        style={{ color: T.fg4, display: 'flex', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'default' }}
-      >
-        <IconInfoCircle size={14} />
-      </button>
-      {vis && (
-        <span style={{
-          position: 'absolute', left: 20, top: -4, zIndex: 20,
-          width: 220, background: T.fg1, color: '#fff',
-          borderRadius: 6, padding: '8px 12px',
+    <span
+      style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}
+      onMouseEnter={() => setVis(true)}
+      onMouseLeave={() => setVis(false)}
+    >
+      {children}
+      {vis && !anyDragging && (
+        <span role="tooltip" style={{
+          position: 'absolute',
+          zIndex: 40,
+          display: 'inline-flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          background: '#fff',
+          color: T.fg2,
+          borderRadius: 6,
+          padding: '5px 10px',
           font: `400 12px/16px ${T.font}`,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+          whiteSpace: width ? 'normal' : 'nowrap',
+          width: width ?? 'max-content',
+          maxWidth: width ?? 240,
+          boxShadow: '0 1px 2.2px 0 rgba(0,0,0,0.25)',
           pointerEvents: 'none',
+          animation: 'tooltipIn 120ms ease both',
+          animationDelay: '133ms',
+          ...position,
         }}>
-          {text}
+          {label}
+          <span style={{
+            position: 'absolute',
+            width: 6, height: 6,
+            background: '#fff',
+            boxShadow: '0 1px 2.2px 0 rgba(0,0,0,0.25)',
+            ...arrowPos,
+          }} />
         </span>
       )}
     </span>
+  )
+}
+
+function Tip({ text }: { text: string }) {
+  return (
+    <Tooltip label={text} side="right" width={220}>
+      <button type="button" style={{ color: T.fg4, display: 'flex', alignItems: 'center', background: 'none', border: 'none', padding: 0, cursor: 'default' }}>
+        <IconInfoCircle size={14} />
+      </button>
+    </Tooltip>
   )
 }
 
@@ -159,29 +232,51 @@ interface RowProps {
   q: Question
   editingId: string | null
   editText: string
+  savedId: string | null
   onEditStart: (q: Question) => void
   onEditChange: (t: string) => void
   onEditSave: () => void
   onEditCancel: () => void
   onDelete: (q: Question) => void
+  onRegenerate: (q: Question) => void
+  regeneratingId: string | null
   editInputRef: React.RefObject<HTMLInputElement | null>
+  isFirst?: boolean
+  isLast?: boolean
 }
 
 function SortableRow(props: RowProps) {
-  const { q, editingId, editText, onEditStart, onEditChange, onEditSave, onEditCancel, onDelete, editInputRef } = props
+  const {
+    q, editingId, editText, savedId,
+    onEditStart, onEditChange, onEditSave, onEditCancel,
+    onDelete, onRegenerate, regeneratingId, editInputRef,
+    isFirst, isLast,
+  } = props
+
+  const isRegenerating = regeneratingId === q.id
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: q.id })
   const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
   const isEditing = editingId === q.id
+  const isSaved   = savedId === q.id
+  const showActions = (hovered || focused) && !isEditing
 
   const rowStyle: CSSProperties = {
     display: 'flex',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 8,
     padding: '10px 16px',
-    borderBottom: `1px solid ${T.divider}`,
-    background: isDragging ? T.primary8 : hovered && !isEditing ? 'rgba(75,70,92,0.04)' : '#fff',
+    borderBottom: isLast ? 'none' : `1px solid ${T.divider}`,
+    borderRadius: isFirst && isLast ? 6 : isFirst ? '6px 6px 0 0' : isLast ? '0 0 6px 6px' : 0,
+    background: isDragging
+      ? T.primary8
+      : isSaved
+      ? T.success100
+      : (hovered || focused) && !isEditing
+      ? T.hoverBg
+      : '#fff',
     opacity: isDragging ? 0.6 : 1,
-    transition: `background ${T.font} 0.12s`,
+    transition: 'background 0.15s',
     transform: CSS.Transform.toString(transform),
   }
 
@@ -191,34 +286,37 @@ function SortableRow(props: RowProps) {
       style={{ ...rowStyle, transition }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false) }}
     >
-      {/* Drag handle */}
-      <button
-        {...listeners}
-        {...attributes}
-        tabIndex={-1}
-        type="button"
-        style={{
-          color: hovered ? T.fg3 : T.fg4,
-          display: 'flex',
-          alignItems: 'center',
-          marginTop: 1,
-          flexShrink: 0,
-          cursor: 'grab',
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          transition: `color 0.12s`,
-          touchAction: 'none',
-        }}
-        title="Drag to reorder"
-      >
-        <IconGripVertical size={16} />
-      </button>
+      {/* Drag handle — always visible at 30% opacity, full on hover */}
+      <Tooltip label="Drag to reorder" side="top">
+        <button
+          {...listeners}
+          {...attributes}
+          tabIndex={-1}
+          type="button"
+          style={{
+            color: T.fg2,
+            opacity: hovered ? 1 : 0.3,
+            display: 'flex',
+            alignItems: 'center',
+            flexShrink: 0,
+            cursor: 'grab',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            transition: 'opacity 0.12s',
+            touchAction: 'none',
+          }}
+        >
+          <IconGripVertical size={16} />
+        </button>
+      </Tooltip>
 
       {/* AI badge or spacer */}
       {q.source === 'ai' ? (
-        <span style={{ marginTop: 3, flexShrink: 0 }}><AiBadge /></span>
+        <span style={{ flexShrink: 0 }}><AiBadge /></span>
       ) : (
         <span style={{ width: 28, flexShrink: 0 }} />
       )}
@@ -226,7 +324,7 @@ function SortableRow(props: RowProps) {
       {/* Text / editor */}
       <div style={{ flex: 1, minWidth: 0 }}>
         {isEditing ? (
-          <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <input
               ref={editInputRef}
               value={editText}
@@ -236,38 +334,43 @@ function SortableRow(props: RowProps) {
                 if (e.key === 'Escape') onEditCancel()
               }}
               style={{
-                width: '100%',
-                padding: '8px 12px',
+                flex: 1, minWidth: 0,
+                padding: '0 8px',
                 border: `1px solid ${T.primary}`,
                 borderRadius: 8,
                 boxShadow: `0 0 0 3px ${T.primary24}`,
                 font: `400 14px/20px ${T.font}`,
+                lineHeight: '20px',
                 color: T.fg1,
                 outline: 'none',
                 background: '#fff',
               }}
             />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-              <span style={{
-                ...helper12,
-                color: editText.length > MAX_CHARS * 0.85 ? T.warning : T.fg4,
-              }}>
-                {editText.length}/{MAX_CHARS}
-              </span>
-              <div style={{ display: 'flex', gap: 12 }}>
-                <button type="button" onClick={onEditCancel}
-                  style={{ ...helper12, background: 'none', border: 'none', cursor: 'pointer', color: T.fg3 }}>
-                  Cancel
-                </button>
-                <button type="button" onClick={onEditSave}
-                  style={{ font: `600 12px/16px ${T.font}`, color: T.primary, background: 'none', border: 'none', cursor: 'pointer' }}>
-                  Save
-                </button>
-              </div>
-            </div>
+            <button type="button" onClick={onEditCancel}
+              style={{ ...helper12, background: 'none', border: 'none', cursor: 'pointer', color: T.fg3, whiteSpace: 'nowrap', flexShrink: 0 }}>
+              Cancel
+            </button>
+            <button type="button" onClick={onEditSave}
+              style={{ font: `600 12px/16px ${T.font}`, color: T.primary, background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              Save
+            </button>
           </div>
+        ) : isRegenerating ? (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <IconLoader2 size={13} style={{ animation: 'spin 1s linear infinite', flexShrink: 0, color: T.fg4 }} />
+            <span style={{ ...body14, color: T.fg4 }}>Generating…</span>
+          </span>
         ) : (
-          <span style={{ ...body14, display: 'block' }}>{q.text}</span>
+          <span
+            tabIndex={0}
+            role="button"
+            style={{ ...body14, display: 'block', cursor: 'text', outline: 'none' }}
+            onDoubleClick={() => onEditStart(q)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === 'F2') onEditStart(q) }}
+            title="Double-click or press Enter to edit"
+          >
+            {q.text}
+          </span>
         )}
       </div>
 
@@ -277,22 +380,37 @@ function SortableRow(props: RowProps) {
           display: 'flex',
           alignItems: 'center',
           gap: 2,
-          opacity: hovered ? 1 : 0,
+          opacity: showActions ? 1 : 0,
           transition: 'opacity 0.12s',
           flexShrink: 0,
         }}>
-          <button type="button" onClick={() => onEditStart(q)}
-            style={{ color: T.fg3, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px 6px', borderRadius: 4 }}
-            title="Edit">
-            <IconPencil size={15} />
-          </button>
-          <button type="button" onClick={() => onDelete(q)}
-            style={{ color: T.fg3, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px 6px', borderRadius: 4 }}
-            title="Delete"
-            onMouseEnter={e => (e.currentTarget.style.color = T.danger)}
-            onMouseLeave={e => (e.currentTarget.style.color = T.fg3)}>
-            <IconTrash size={15} />
-          </button>
+          {q.source === 'ai' && (
+            <Tooltip label="Regenerate question" side="top">
+              <button type="button" onClick={() => onRegenerate(q)}
+                tabIndex={showActions ? 0 : -1}
+                style={{ color: T.fg3, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4 }}
+                onMouseEnter={e => (e.currentTarget.style.color = T.primary)}
+                onMouseLeave={e => (e.currentTarget.style.color = T.fg3)}>
+                <IconRefresh size={15} />
+              </button>
+            </Tooltip>
+          )}
+          <Tooltip label="Edit" side="top">
+            <button type="button" onClick={() => onEditStart(q)}
+              tabIndex={showActions ? 0 : -1}
+              style={{ color: T.fg3, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4 }}>
+              <IconPencil size={15} />
+            </button>
+          </Tooltip>
+          <Tooltip label="Delete" side="top">
+            <button type="button" onClick={() => onDelete(q)}
+              tabIndex={showActions ? 0 : -1}
+              style={{ color: T.fg3, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4 }}
+              onMouseEnter={e => (e.currentTarget.style.color = T.danger)}
+              onMouseLeave={e => (e.currentTarget.style.color = T.fg3)}>
+              <IconTrash size={15} />
+            </button>
+          </Tooltip>
         </div>
       )}
     </div>
@@ -304,10 +422,16 @@ function SortableRow(props: RowProps) {
 export default function StarterQuestions() {
   const [manualQuestions, setManualQuestions] = useState<Question[]>(INITIAL_MANUAL)
   const [aiQuestions, setAiQuestions]         = useState<Question[]>([])
-  const [savedAiQuestions, setSavedAiQuestions] = useState<Question[]>([])
-  const [crOn, setCrOn]         = useState(false)
-  const [crStatus, setCrStatus] = useState<CRStatus>('off')
-  const [hasContent, setHasContent] = useState(true)
+  const [crOn, setCrOn]               = useState(false)
+  const [crStatus, setCrStatus]       = useState<CRStatus>('off')
+  const [genCount, setGenCount]       = useState(0)
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
+  const [anyDragging, setAnyDragging] = useState(false)
+  const [savedId, setSavedId]         = useState<string | null>(null)
+  const [showAiGuard, setShowAiGuard] = useState(false)
+  const poolIndexRef    = useRef(0)
+  const aiGuardShownRef = useRef(false)
+  const savedTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText]   = useState('')
   const [addingNew, setAddingNew] = useState(false)
@@ -323,10 +447,7 @@ export default function StarterQuestions() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  const displayedQuestions: Question[] = crOn
-    ? [...aiQuestions, ...manualQuestions]
-    : manualQuestions
-
+  const displayedQuestions: Question[] = crOn ? aiQuestions : manualQuestions
   const totalCount = displayedQuestions.length
   const atLimit    = totalCount >= MAX_QUESTIONS
 
@@ -344,28 +465,62 @@ export default function StarterQuestions() {
 
   function handleToggleCR() {
     if (!crOn) {
-      if (!hasContent) { setCrOn(true); setCrStatus('no-content'); return }
-      setCrOn(true); setCrStatus('generating')
-      setTimeout(() => {
-        setAiQuestions(savedAiQuestions.length > 0 ? savedAiQuestions : AI_QUESTIONS)
-        setCrStatus('ready')
-      }, 1800)
+      // One-time guard when manual questions exist
+      if (manualQuestions.length > 0 && !aiGuardShownRef.current) {
+        setShowAiGuard(true)
+        return
+      }
+      enableAI()
     } else {
-      setSavedAiQuestions(aiQuestions); setAiQuestions([])
+      setAiQuestions([])
       setCrOn(false); setCrStatus('off')
     }
+  }
+
+  function enableAI() {
+    aiGuardShownRef.current = true
+    setShowAiGuard(false)
+    setCrOn(true); setCrStatus('generating')
+    setTimeout(() => {
+      setAiQuestions(AI_QUESTION_SETS[0])
+      setCrStatus('ready')
+      setGenCount(1)
+    }, 1800)
+  }
+
+  function handleRegenerateOne(q: Question) {
+    if (regeneratingId) return
+    setRegeneratingId(q.id)
+    setTimeout(() => {
+      const currentTexts = aiQuestions.map(aq => aq.text)
+      const available = AI_POOL.filter(t => !currentTexts.includes(t))
+      const pool = available.length > 0 ? available : AI_POOL
+      const next = pool[poolIndexRef.current % pool.length]
+      poolIndexRef.current += 1
+      setAiQuestions(prev => prev.map(aq =>
+        aq.id === q.id ? { ...aq, id: `ai-${Date.now()}`, text: next } : aq
+      ))
+      setRegeneratingId(null)
+    }, 1200)
+  }
+
+  function handleRegenerate() {
+    setCrStatus('generating')
+    setAiQuestions([])
+    setTimeout(() => {
+      const nextSet = AI_QUESTION_SETS[genCount % AI_QUESTION_SETS.length]
+      setAiQuestions(nextSet)
+      setCrStatus('ready')
+      setGenCount(c => c + 1)
+    }, 1800)
   }
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
     const aId = String(active.id), oId = String(over.id)
-    const inAi = (id: string) => aiQuestions.some(q => q.id === id)
-    if (inAi(aId) && inAi(oId)) {
-      setAiQuestions(prev => arrayMove(prev, prev.findIndex(q => q.id === aId), prev.findIndex(q => q.id === oId)))
-    } else if (!inAi(aId) && !inAi(oId)) {
-      setManualQuestions(prev => arrayMove(prev, prev.findIndex(q => q.id === aId), prev.findIndex(q => q.id === oId)))
-    }
+    const setter = crOn ? setAiQuestions : setManualQuestions
+    setter(prev => arrayMove(prev, prev.findIndex(q => q.id === aId), prev.findIndex(q => q.id === oId)))
   }
 
   function startEdit(q: Question) { setEditingId(q.id); setEditText(q.text) }
@@ -375,7 +530,12 @@ export default function StarterQuestions() {
     const t = editText.trim()
     if (!t) { cancelEdit(); return }
     const up = (prev: Question[]) => prev.map(q => q.id === editingId ? { ...q, text: t } : q)
-    setAiQuestions(up); setManualQuestions(up)
+    if (crOn) setAiQuestions(up); else setManualQuestions(up)
+    // Flash green confirmation on the saved row
+    const id = editingId
+    setSavedId(id)
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    savedTimerRef.current = setTimeout(() => setSavedId(null), 700)
     setEditingId(null); setEditText('')
   }
 
@@ -383,12 +543,11 @@ export default function StarterQuestions() {
 
   function deleteQuestion(q: Question) {
     const idx = displayedQuestions.findIndex(dq => dq.id === q.id)
-    q.source === 'ai'
-      ? setAiQuestions(prev => prev.filter(p => p.id !== q.id))
-      : setManualQuestions(prev => prev.filter(p => p.id !== q.id))
+    const setter = crOn ? setAiQuestions : setManualQuestions
+    setter(prev => prev.filter(p => p.id !== q.id))
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
     setToast({ question: q, originalIndex: idx })
-    toastTimerRef.current = setTimeout(() => setToast(null), 5000)
+    toastTimerRef.current = setTimeout(() => setToast(null), 10000)
   }
 
   function undoDelete() {
@@ -396,19 +555,16 @@ export default function StarterQuestions() {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
     const { question: q, originalIndex } = toast
     setToast(null)
-    if (q.source === 'ai') {
-      setAiQuestions(prev => { const a = [...prev]; a.splice(originalIndex, 0, q); return a })
-    } else {
-      setManualQuestions(prev => {
-        const a = [...prev]; a.splice(Math.max(0, originalIndex - aiQuestions.length), 0, q); return a
-      })
-    }
+    const setter = q.source === 'ai' ? setAiQuestions : setManualQuestions
+    setter(prev => { const a = [...prev]; a.splice(originalIndex, 0, q); return a })
   }
 
   function addQuestion() {
     const t = newText.trim()
     if (!t || atLimit) return
-    setManualQuestions(prev => [...prev, { id: `q-${Date.now()}`, text: t, source: 'manual' }])
+    const source = crOn ? 'ai' : 'manual' as const
+    const setter = crOn ? setAiQuestions : setManualQuestions
+    setter(prev => [...prev, { id: `q-${Date.now()}`, text: t, source }])
     setNewText(''); setAddingNew(false)
   }
 
@@ -418,28 +574,28 @@ export default function StarterQuestions() {
     const base: CSSProperties = {
       display: 'inline-flex', alignItems: 'center', gap: 4,
       padding: '2px 8px', borderRadius: 4,
-      font: `600 11px/16px ${T.font}`, whiteSpace: 'nowrap',
+      font: `500 12px/16px ${T.font}`, whiteSpace: 'nowrap',
     }
     if (!crOn) return (
-      <span style={{ ...base, background: 'rgba(75,70,92,0.08)', color: T.fg3 }}>Manual only</span>
+      <span style={{ ...base, background: T.gray100, color: T.fg3 }}>Your questions</span>
     )
     if (crStatus === 'generating') return (
-      <span style={{ ...base, background: T.primary12, color: '#5C53C0' }}>
+      <span style={{ ...base, background: T.primary100, color: '#5C53C0' }}>
         <IconLoader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> Generating…
       </span>
     )
     if (crStatus === 'no-content') return (
-      <span style={{ ...base, background: T.warning12, color: T.warningText }}>
+      <span style={{ ...base, background: T.warning100, color: T.warningText }}>
         <IconAlertCircle size={11} /> Add content first
       </span>
     )
     if (crStatus === 'error') return (
-      <span style={{ ...base, background: 'rgba(234,84,85,0.12)', color: T.danger }}>
+      <span style={{ ...base, background: T.danger100, color: T.danger }}>
         <IconAlertCircle size={11} /> Generation failed
       </span>
     )
     return (
-      <span style={{ ...base, background: T.success12, color: T.successText }}>
+      <span style={{ ...base, background: T.success100, color: T.successText }}>
         <IconBolt size={11} /> {aiQuestions.length} AI questions ready
       </span>
     )
@@ -447,19 +603,81 @@ export default function StarterQuestions() {
 
   /* ── Shared row props ── */
 
-  const rowProps = { editingId, editText, onEditStart: startEdit, onEditChange: setEditText, onEditSave: saveEdit, onEditCancel: cancelEdit, onDelete: deleteQuestion, editInputRef }
+  const rowProps = {
+    editingId, editText, savedId,
+    onEditStart: startEdit, onEditChange: setEditText, onEditSave: saveEdit, onEditCancel: cancelEdit,
+    onDelete: deleteQuestion, onRegenerate: handleRegenerateOne,
+    regeneratingId, editInputRef,
+  }
 
   /* ── Render ── */
 
   return (
     <>
-      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <style>{`
+        @keyframes spin{to{transform:rotate(360deg)}}
+        @keyframes shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
+        @keyframes fadeSlideIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes modalIn{from{opacity:0;transform:translate(-50%,calc(-50% + 8px))}to{opacity:1;transform:translate(-50%,-50%)}}
+        @keyframes tooltipIn{from{opacity:0}to{opacity:1}}
+      `}</style>
+
+      {/* AI guard modal */}
+      {showAiGuard && (
+        <>
+          <div
+            onClick={() => setShowAiGuard(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(47,61,57,0.5)', zIndex: 60 }}
+          />
+          <div style={{
+            position: 'fixed',
+            top: '50%', left: '50%',
+            background: '#fff',
+            borderRadius: 8,
+            padding: 24,
+            width: 360,
+            maxWidth: 'calc(100vw - 32px)',
+            boxShadow: T.shadowModal,
+            zIndex: 61,
+            animation: 'modalIn 0.2s cubic-bezier(0.2,0.8,0.2,1) forwards',
+          }}>
+            <h3 style={{ font: `600 16px/24px ${T.font}`, color: T.fg1, margin: '0 0 8px' }}>
+              Enable AI questions?
+            </h3>
+            <p style={{ font: `400 14px/20px ${T.font}`, color: T.fg3, margin: '0 0 20px' }}>
+              AI questions will replace your current list. If you turn AI off, your questions are restored.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button type="button" onClick={() => setShowAiGuard(false)}
+                style={{
+                  font: `600 13px/18px ${T.font}`, color: T.fg2,
+                  background: '#fff', border: `1px solid ${T.border}`,
+                  borderRadius: 8, padding: '7px 16px', cursor: 'pointer',
+                }}>
+                Cancel
+              </button>
+              <button type="button" onClick={enableAI}
+                style={{
+                  font: `600 13px/18px ${T.font}`, color: '#fff',
+                  background: T.primary, border: 'none',
+                  borderRadius: 8, padding: '7px 16px', cursor: 'pointer',
+                  boxShadow: T.primaryShadow,
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = T.primaryHover)}
+                onMouseLeave={e => (e.currentTarget.style.background = T.primary)}>
+                <IconBolt size={14} /> Enable AI
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Section header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <span style={{
           width: 36, height: 36, borderRadius: 8,
-          background: T.primary12, color: T.primary,
+          background: T.primary100, color: T.primary,
           display: 'grid', placeItems: 'center', flexShrink: 0,
         }}>
           <IconMessageQuestion size={18} />
@@ -472,49 +690,14 @@ export default function StarterQuestions() {
             Shown to users when they open your agent
           </p>
         </div>
-        <Tip text="Add 3+ questions to increase first-message rate. Users click a question to start the conversation." />
+        <Tip text="Add up to 4 questions to help users start the conversation." />
       </div>
-
-      {/* Empty state */}
-      {totalCount === 0 && !addingNew && (
-        <div style={{
-          border: `1.5px dashed ${T.primary12}`,
-          borderRadius: 6, padding: 20, textAlign: 'center',
-          background: T.primary8, marginBottom: 16,
-        }}>
-          <p style={{ font: `500 14px/20px ${T.font}`, color: T.fg2, margin: '0 0 4px' }}>
-            Help users start the conversation
-          </p>
-          <p style={{ ...helper12, margin: '0 0 12px' }}>
-            Add 3+ questions to increase first-message rate, or generate them from your content.
-          </p>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-            <button type="button" onClick={() => setAddingNew(true)} style={{
-              font: `500 13px/18px ${T.font}`, letterSpacing: '.43px',
-              padding: '7px 14px', borderRadius: 8,
-              border: `1px solid ${T.border}`, background: '#fff',
-              color: T.fg2, cursor: 'pointer',
-            }}>
-              Add manually
-            </button>
-            <button type="button" onClick={handleToggleCR} style={{
-              font: `500 13px/18px ${T.font}`, letterSpacing: '.43px',
-              padding: '7px 14px', borderRadius: 8,
-              background: T.primary, color: '#fff', border: 'none',
-              boxShadow: T.primaryShadow, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              <IconBolt size={14} /> Enable AI questions
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* AI toggle card */}
       <div style={{
         border: `1px solid ${crOn ? '#D5D1FB' : T.divider}`,
         borderRadius: 6,
-        background: crOn ? 'rgba(115,103,240,0.04)' : '#fff',
+        background: crOn ? T.primary8 : '#fff',
         padding: '16px 20px',
         marginBottom: 12,
         transition: 'all 0.15s',
@@ -529,8 +712,42 @@ export default function StarterQuestions() {
             </div>
             <p style={{ ...helper12, margin: '2px 0 0' }}>Auto-created from your content</p>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <StatusChip />
+            {crOn && crStatus === 'ready' && (
+              <button type="button" onClick={handleRegenerate}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  font: `500 12px/16px ${T.font}`,
+                  color: T.fg3, background: 'none',
+                  border: `1px solid ${T.gray200}`,
+                  borderRadius: 6, padding: '3px 8px',
+                  cursor: 'pointer', flexShrink: 0,
+                  transition: 'color 0.12s, border-color 0.12s',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.color = T.primary; e.currentTarget.style.borderColor = T.primary }}
+                onMouseLeave={e => { e.currentTarget.style.color = T.fg3; e.currentTarget.style.borderColor = T.gray200 }}
+              >
+                <IconRefresh size={13} /> Regenerate
+              </button>
+            )}
+            {/* Retry button shown on generation failure */}
+            {crOn && crStatus === 'error' && (
+              <button type="button" onClick={handleRegenerate}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 4,
+                  font: `500 12px/16px ${T.font}`,
+                  color: T.danger, background: 'none',
+                  border: `1px solid rgba(234,84,85,0.3)`,
+                  borderRadius: 6, padding: '3px 8px',
+                  cursor: 'pointer', flexShrink: 0,
+                }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = T.danger }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(234,84,85,0.3)' }}
+              >
+                <IconRefresh size={13} /> Retry
+              </button>
+            )}
             {/* Toggle */}
             <button
               type="button"
@@ -544,7 +761,7 @@ export default function StarterQuestions() {
                 borderRadius: 1000,
                 background: crOn ? T.primary : T.gray300,
                 border: 'none', cursor: 'pointer', padding: 0,
-                transition: `background 0.15s`,
+                transition: 'background 0.15s',
                 flexShrink: 0,
                 outline: 'none',
               }}
@@ -561,12 +778,19 @@ export default function StarterQuestions() {
           </div>
         </div>
 
+        {/* Priming copy — visible only when AI is off */}
+        {!crOn && (
+          <p style={{ ...helper12, margin: '10px 0 0', color: T.fg4 }}>
+            Generates 4 questions from your content. You can edit or regenerate any of them.
+          </p>
+        )}
+
         {/* No content warning */}
         {crOn && crStatus === 'no-content' && (
           <div style={{
             display: 'flex', alignItems: 'flex-start', gap: 8,
             marginTop: 12, padding: '10px 12px',
-            background: T.warning12, border: `1px solid rgba(255,159,67,0.24)`,
+            background: T.warning100, border: `1px solid rgba(255,159,67,0.24)`,
             borderRadius: 6,
           }}>
             <IconAlertCircle size={14} style={{ color: T.warning, flexShrink: 0, marginTop: 1 }} />
@@ -578,61 +802,67 @@ export default function StarterQuestions() {
             </p>
           </div>
         )}
-
-        {/* Generating skeleton */}
-        {crOn && crStatus === 'generating' && (
-          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[68, 52, 80, 58].map((w, i) => (
-              <div key={i} style={{
-                height: 14, borderRadius: 4,
-                background: 'rgba(115,103,240,0.12)',
-                width: `${w}%`,
-                animation: 'pulse 1.5s ease-in-out infinite',
-              }} />
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Question list */}
-      {displayedQuestions.length > 0 && (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <div style={{
-            border: `1px solid ${T.divider}`,
-            borderRadius: 6,
-            background: '#fff',
-            marginBottom: 12,
-            overflow: 'hidden',
-          }}>
-            {crOn && aiQuestions.length > 0 && (
-              <SortableContext items={aiQuestions.map(q => q.id)} strategy={verticalListSortingStrategy}>
-                {aiQuestions.map(q => <SortableRow key={q.id} q={q} {...rowProps} />)}
-              </SortableContext>
-            )}
-
-            {crOn && aiQuestions.length > 0 && manualQuestions.length > 0 && (
+      {crStatus === 'generating' ? (
+        <div style={{
+          border: `1px solid ${T.divider}`,
+          borderRadius: 6, background: '#fff',
+          marginBottom: 12, overflow: 'hidden',
+        }}>
+          {[72, 56, 84, 60].map((w, i) => (
+            <div key={i} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '10px 16px',
+              borderBottom: i < 3 ? `1px solid ${T.divider}` : 'none',
+            }}>
               <div style={{
-                padding: '6px 16px',
-                background: T.gray50,
-                borderTop: `1px solid ${T.divider}`,
-                borderBottom: `1px solid ${T.divider}`,
-                font: `600 11px/16px ${T.font}`,
-                color: T.fg4,
-                letterSpacing: '.06em',
-                textTransform: 'uppercase',
-              }}>
-                Your questions
-              </div>
-            )}
-
-            {manualQuestions.length > 0 && (
-              <SortableContext items={manualQuestions.map(q => q.id)} strategy={verticalListSortingStrategy}>
-                {manualQuestions.map(q => <SortableRow key={q.id} q={q} {...rowProps} />)}
+                width: 16, height: 16, borderRadius: 3, flexShrink: 0,
+                background: 'linear-gradient(90deg,rgba(115,103,240,0.08) 0%,rgba(115,103,240,0.20) 50%,rgba(115,103,240,0.08) 100%)',
+                backgroundSize: '600px 100%',
+                animation: `shimmer 1.6s ease-in-out infinite`,
+                animationDelay: `${i * 0.12}s`,
+              }} />
+              <div style={{ width: 28, flexShrink: 0 }} />
+              <div style={{
+                height: 20, borderRadius: 4,
+                width: `${w}%`,
+                background: 'linear-gradient(90deg,rgba(115,103,240,0.07) 0%,rgba(115,103,240,0.18) 50%,rgba(115,103,240,0.07) 100%)',
+                backgroundSize: '600px 100%',
+                animation: `shimmer 1.6s ease-in-out infinite`,
+                animationDelay: `${i * 0.12}s`,
+              }} />
+            </div>
+          ))}
+        </div>
+      ) : displayedQuestions.length > 0 ? (
+        <DraggingCtx.Provider value={anyDragging}>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={() => setAnyDragging(true)}
+            onDragEnd={e => { setAnyDragging(false); handleDragEnd(e) }}
+            onDragCancel={() => setAnyDragging(false)}
+          >
+            <div style={{
+              border: `1px solid ${T.divider}`,
+              borderRadius: 6,
+              background: '#fff',
+              marginBottom: 12,
+              overflow: 'visible',
+              animation: crOn ? 'fadeSlideIn 0.28s cubic-bezier(0.2,0.7,0.3,1) both' : undefined,
+            }}>
+              <SortableContext items={displayedQuestions.map(q => q.id)} strategy={verticalListSortingStrategy}>
+                {displayedQuestions.map((q, i) => (
+                  <SortableRow key={q.id} q={q} {...rowProps}
+                    isFirst={i === 0} isLast={i === displayedQuestions.length - 1} />
+                ))}
               </SortableContext>
-            )}
-          </div>
-        </DndContext>
-      )}
+            </div>
+          </DndContext>
+        </DraggingCtx.Provider>
+      ) : null}
 
       {/* Add question */}
       {!atLimit && (
@@ -660,10 +890,7 @@ export default function StarterQuestions() {
                 }}
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-                <span style={{
-                  ...helper12,
-                  color: newText.length > MAX_CHARS * 0.85 ? T.warning : T.fg4,
-                }}>
+                <span style={{ ...helper12, color: newText.length > MAX_CHARS * 0.85 ? T.warning : T.fg4 }}>
                   {newText.length}/{MAX_CHARS} characters
                 </span>
                 <div style={{ display: 'flex', gap: 12 }}>
@@ -686,9 +913,8 @@ export default function StarterQuestions() {
             <button type="button" onClick={() => setAddingNew(true)}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                font: `500 13px/18px ${T.font}`, color: T.primary,
+                font: `600 13px/18px ${T.font}`, color: T.primary,
                 background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-                letterSpacing: '.43px',
               }}
               onMouseEnter={e => (e.currentTarget.style.color = T.primaryHover)}
               onMouseLeave={e => (e.currentTarget.style.color = T.primary)}>
@@ -708,10 +934,7 @@ export default function StarterQuestions() {
 
       {/* Footer: count + preview */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <span style={{
-          ...helper12,
-          color: atLimit ? T.warning : T.fg4,
-        }}>
+        <span style={{ ...helper12, color: atLimit ? T.warning : T.fg4 }}>
           {atLimit ? `Limit reached (${totalCount}/${MAX_QUESTIONS})` : `${totalCount} of ${MAX_QUESTIONS} questions`}
         </span>
         <button type="button"
@@ -737,7 +960,7 @@ export default function StarterQuestions() {
           padding: 16,
           marginBottom: 16,
         }}>
-          <p style={{ ...helper12, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600, color: T.fg4, margin: '0 0 12px' }}>
+          <p style={{ ...helper12, textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600, color: T.fg4, margin: '0 0 12px' }}>
             Widget preview
           </p>
           <div style={{
@@ -745,7 +968,7 @@ export default function StarterQuestions() {
             border: `1px solid ${T.divider}`,
             borderRadius: 12,
             padding: 16, maxWidth: 320,
-            boxShadow: '0 4px 24px rgba(75,70,92,0.08)',
+            boxShadow: T.shadowCard,
           }}>
             <p style={{ font: `400 12px/16px ${T.font}`, color: T.fg3, margin: '0 0 10px' }}>
               How can I help you today?
@@ -781,18 +1004,6 @@ export default function StarterQuestions() {
         </div>
       )}
 
-      {/* Demo control */}
-      <div style={{ paddingTop: 12, borderTop: `1px solid ${T.divider}` }}>
-        <label style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          font: `400 12px/16px ${T.font}`, color: T.fg4,
-          cursor: 'pointer', userSelect: 'none',
-        }}>
-          <input type="checkbox" checked={hasContent} onChange={e => setHasContent(e.target.checked)} style={{ accentColor: T.primary }} />
-          Demo: agent has a knowledge base
-        </label>
-      </div>
-
       {/* Undo toast */}
       {toast && (
         <div style={{
@@ -801,7 +1012,7 @@ export default function StarterQuestions() {
           display: 'flex', alignItems: 'center', gap: 12,
           background: T.fg1, color: '#fff',
           padding: '10px 16px', borderRadius: 8,
-          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          boxShadow: T.shadowModal,
           font: `400 13px/18px ${T.font}`,
           zIndex: 50, whiteSpace: 'nowrap',
         }}>
