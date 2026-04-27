@@ -394,106 +394,7 @@ function UpsellModal({ plan, onClose }: { plan: 'Premium' | 'Enterprise'; onClos
   )
 }
 
-/* ── Locked gate (Free tier) ────────────────────────────────────────────── */
-
 const DOCS_URL = 'https://docs.customgpt.ai/docs/how-context-rich-starter-questions-work'
-
-function LockedGate({ onUpgrade }: { onUpgrade: () => void }) {
-  return (
-    <div style={{ position: 'relative', borderRadius: 8, overflow: 'hidden' }}>
-
-      {/* Ghost preview — faded */}
-      <div style={{ opacity: 0.18, pointerEvents: 'none', userSelect: 'none' }}>
-        {/* AI toggle ghost */}
-        <div style={{
-          border: `1px solid ${T.divider}`, borderRadius: 6,
-          padding: '16px 20px', marginBottom: 12, background: '#fff',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <span style={{ font: `500 14px/20px ${T.font}`, color: T.fg1 }}>AI-generated questions</span>
-              <p style={{ font: `400 12px/16px ${T.font}`, color: T.fg3, margin: '2px 0 0' }}>Auto-created from your content</p>
-            </div>
-            <div style={{
-              width: 36, height: 20, borderRadius: 1000,
-              background: T.gray300, position: 'relative', flexShrink: 0,
-            }}>
-              <span style={{
-                position: 'absolute', top: 3, left: 3,
-                width: 14, height: 14, borderRadius: '50%', background: '#fff',
-              }} />
-            </div>
-          </div>
-        </div>
-        {/* Question rows ghost */}
-        <div style={{ border: `1px solid ${T.divider}`, borderRadius: 6, background: '#fff' }}>
-          {INITIAL_MANUAL.map((q, i) => (
-            <div key={q.id} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '10px 16px',
-              borderBottom: i < INITIAL_MANUAL.length - 1 ? `1px solid ${T.divider}` : 'none',
-            }}>
-              <IconGripVertical size={16} style={{ color: T.fg4, flexShrink: 0 }} />
-              <span style={{ width: 28, flexShrink: 0 }} />
-              <span style={{ font: `400 14px/20px ${T.font}`, color: T.fg2 }}>{q.text}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Lock overlay */}
-      <div style={{
-        position: 'absolute', inset: 0,
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(255,255,255,0.92)',
-        gap: 16, padding: 32,
-        textAlign: 'center',
-      }}>
-        <div style={{
-          width: 48, height: 48, borderRadius: 12,
-          background: T.primary100, color: T.primary,
-          display: 'grid', placeItems: 'center', flexShrink: 0,
-        }}>
-          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 16 16" fill="none">
-            <path d="M5.33337 7.33333V4.66667C5.33337 3.19391 6.52728 2 8.00004 2C9.4728 2 10.6667 3.19391 10.6667 4.66667V7.33333M8.66671 10.6667C8.66671 11.0349 8.36823 11.3333 8.00004 11.3333C7.63185 11.3333 7.33337 11.0349 7.33337 10.6667C7.33337 10.2985 7.63185 10 8.00004 10C8.36823 10 8.66671 10.2985 8.66671 10.6667ZM4.66671 14H11.3334C12.0698 14 12.6667 13.403 12.6667 12.6667V8.66667C12.6667 7.93029 12.0698 7.33333 11.3334 7.33333H4.66671C3.93033 7.33333 3.33337 7.93029 3.33337 8.66667V12.6667C3.33337 13.403 3.93033 14 4.66671 14Z" stroke="#7367F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-        </div>
-        <div>
-          <h3 style={{ font: `600 15px/22px ${T.font}`, color: T.fg1, margin: '0 0 6px' }}>
-            Starter Questions is a Premium feature
-          </h3>
-          <p style={{ font: `400 13px/18px ${T.font}`, color: T.fg3, margin: 0, maxWidth: 320 }}>
-            Add up to 4 questions to guide users from the very first message.
-            On Enterprise, AI generates them automatically from your knowledge base.
-          </p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-          <button type="button" style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            font: `600 13px/18px ${T.font}`, color: '#fff',
-            background: T.primary, border: 'none',
-            borderRadius: 8, padding: '9px 20px',
-            cursor: 'pointer', boxShadow: T.primaryShadow,
-          }}
-            onMouseEnter={e => (e.currentTarget.style.background = T.primaryHover)}
-            onMouseLeave={e => (e.currentTarget.style.background = T.primary)}
-            onClick={onUpgrade}>
-            <IconBolt size={14} /> Upgrade to Premium
-          </button>
-          <a href={DOCS_URL} target="_blank" rel="noopener noreferrer" style={{
-            font: `500 13px/18px ${T.font}`, color: T.fg3,
-            textDecoration: 'none',
-          }}
-            onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = T.fg2)}
-            onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = T.fg3)}>
-            Learn more ↗
-          </a>
-        </div>
-      </div>
-    </div>
-  )
-}
 
 const HINT_MAX = 120
 
@@ -1030,9 +931,11 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
         <Tip text="Add up to 4 questions to help users start the conversation." />
       </div>
 
-      {/* Free tier — locked gate */}
-      {tier === 'free' ? <LockedGate onUpgrade={() => setUpsellPlan('Premium')} /> : (
-      <>
+      {/* Content wrapper — real UI always rendered; disabled + overlay for Free */}
+      <div style={{ position: 'relative' }}>
+      <div style={tier === 'free' ? {
+        opacity: 0.4, pointerEvents: 'none', userSelect: 'none',
+      } : {}}>
 
       {/* AI toggle card */}
       <div style={{
@@ -1318,6 +1221,62 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
         </span>
       </div>
 
+      </div>{/* end disabled wrapper */}
+
+      {/* Free overlay */}
+      {tier === 'free' && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          display: 'flex', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          gap: 16, padding: 24,
+          background: 'rgba(250,248,248,0.90)',
+          borderRadius: 6,
+          textAlign: 'center',
+        }}>
+          <div style={{
+            width: 44, height: 44, borderRadius: 10,
+            background: '#E3E1FC',
+            display: 'grid', placeItems: 'center', flexShrink: 0,
+          }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 16 16" fill="none">
+              <path d="M5.33337 7.33333V4.66667C5.33337 3.19391 6.52728 2 8.00004 2C9.4728 2 10.6667 3.19391 10.6667 4.66667V7.33333M8.66671 10.6667C8.66671 11.0349 8.36823 11.3333 8.00004 11.3333C7.63185 11.3333 7.33337 11.0349 7.33337 10.6667C7.33337 10.2985 7.63185 10 8.00004 10C8.36823 10 8.66671 10.2985 8.66671 10.6667ZM4.66671 14H11.3334C12.0698 14 12.6667 13.403 12.6667 12.6667V8.66667C12.6667 7.93029 12.0698 7.33333 11.3334 7.33333H4.66671C3.93033 7.33333 3.93033 7.93029 3.33337 8.66667V12.6667C3.33337 13.403 3.93033 14 4.66671 14Z" stroke="#7367F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <h3 style={{ font: `600 15px/22px ${T.font}`, color: T.fg1, margin: '0 0 6px' }}>
+              Starter Questions is a Premium feature
+            </h3>
+            <p style={{ font: `400 13px/18px ${T.font}`, color: T.fg3, margin: 0, maxWidth: 300 }}>
+              Add up to 4 questions to guide users from the very first message.
+              On Enterprise, AI generates them from your knowledge base.
+            </p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button type="button" onClick={() => setUpsellPlan('Premium')}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                font: `600 13px/18px ${T.font}`, color: '#fff',
+                background: T.primary, border: 'none',
+                borderRadius: 8, padding: '9px 20px',
+                cursor: 'pointer', boxShadow: T.primaryShadow,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = T.primaryHover)}
+              onMouseLeave={e => (e.currentTarget.style.background = T.primary)}>
+              <IconBolt size={14} /> Upgrade to Premium
+            </button>
+            <a href={DOCS_URL} target="_blank" rel="noopener noreferrer"
+              style={{ font: `500 13px/18px ${T.font}`, color: T.fg3, textDecoration: 'none' }}
+              onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = T.fg2)}
+              onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = T.fg3)}>
+              Learn more ↗
+            </a>
+          </div>
+        </div>
+      )}
+
+      </div>{/* end relative wrapper */}
+
       {/* Undo toast */}
       {toast && (
         <div style={{
@@ -1346,9 +1305,6 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
             <IconX size={14} />
           </button>
         </div>
-      )}
-
-      </>
       )}
     </>
   )
