@@ -26,8 +26,6 @@ import {
   IconAlertCircle,
   IconLoader2,
   IconX,
-  IconEye,
-  IconEyeOff,
   IconInfoCircle,
   IconArrowBackUp,
   IconGripVertical,
@@ -480,7 +478,6 @@ export default function StarterQuestions() {
   const [addingNew, setAddingNew] = useState(false)
   const [newText, setNewText]     = useState('')
   const [aiHint, setAiHint] = useState('')
-  const [previewOpen, setPreviewOpen] = useState(false)
   const [toast, setToast] = useState<ToastState | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const editInputRef  = useRef<HTMLInputElement | null>(null)
@@ -937,11 +934,12 @@ export default function StarterQuestions() {
         </DraggingCtx.Provider>
       ) : null}
 
-      {/* Add question */}
-      {!atLimit && (
-        <div style={{ marginBottom: 16 }}>
-          {addingNew ? (
+      {/* Add question + counter */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        {!atLimit ? (
+          addingNew ? (
             <div style={{
+              flex: 1,
               border: `1px solid ${T.primary}`,
               boxShadow: `0 0 0 3px ${T.primary24}`,
               borderRadius: 8, padding: '10px 16px',
@@ -1000,81 +998,12 @@ export default function StarterQuestions() {
               <IconPlus size={14} />
               Add a starter question
             </button>
-          )}
-        </div>
-      )}
-
-      {/* Footer: count + preview */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          )
+        ) : <span />}
         <span style={{ ...helper12, color: atLimit ? T.warning : T.fg4 }}>
           {atLimit ? `Limit reached (${totalCount}/${MAX_QUESTIONS})` : `${totalCount} of ${MAX_QUESTIONS} questions`}
         </span>
-        <button type="button"
-          onClick={() => setPreviewOpen(v => !v)}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 5,
-            font: `500 12px/16px ${T.font}`, color: T.fg3,
-            background: 'none', border: 'none', cursor: 'pointer', padding: 0,
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = T.fg2)}
-          onMouseLeave={e => (e.currentTarget.style.color = T.fg3)}>
-          {previewOpen ? <IconEyeOff size={14} /> : <IconEye size={14} />}
-          {previewOpen ? 'Hide preview' : 'Preview in widget'}
-        </button>
       </div>
-
-      {/* Widget preview */}
-      {previewOpen && (
-        <div style={{
-          border: `1px solid ${T.divider}`,
-          borderRadius: 6,
-          background: T.gray50,
-          padding: 16,
-          marginBottom: 16,
-        }}>
-          <p style={{ ...helper12, textTransform: 'uppercase', letterSpacing: '.06em', fontWeight: 600, color: T.fg4, margin: '0 0 12px' }}>
-            Widget preview
-          </p>
-          <div style={{
-            background: '#fff',
-            border: `1px solid ${T.divider}`,
-            borderRadius: 12,
-            padding: 16, maxWidth: 320,
-            boxShadow: T.shadowCard,
-          }}>
-            <p style={{ font: `400 12px/16px ${T.font}`, color: T.fg3, margin: '0 0 10px' }}>
-              How can I help you today?
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {displayedQuestions.slice(0, 4).map(q => (
-                <button key={q.id} type="button" style={{
-                  textAlign: 'left',
-                  font: `400 12px/16px ${T.font}`,
-                  color: T.fg2, padding: '8px 12px',
-                  border: `1px solid ${T.divider}`,
-                  borderRadius: 8, background: T.gray50,
-                  cursor: 'pointer', overflow: 'hidden',
-                  textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.background = T.primary8; e.currentTarget.style.borderColor = '#D5D1FB' }}
-                  onMouseLeave={e => { e.currentTarget.style.background = T.gray50; e.currentTarget.style.borderColor = T.divider }}>
-                  {q.text}
-                </button>
-              ))}
-              {displayedQuestions.length > 4 && (
-                <p style={{ font: `400 11px/16px ${T.font}`, color: T.fg4, textAlign: 'center', margin: '4px 0 0' }}>
-                  +{displayedQuestions.length - 4} more
-                </p>
-              )}
-              {displayedQuestions.length === 0 && (
-                <p style={{ font: `400 12px/16px ${T.font}`, color: T.fg4, textAlign: 'center', padding: '8px 0' }}>
-                  No questions yet
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Undo toast */}
       {toast && (
