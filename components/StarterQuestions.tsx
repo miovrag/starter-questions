@@ -226,6 +226,49 @@ function Tip({ text }: { text: string }) {
   )
 }
 
+const HINT_MAX = 120
+
+function AiHintInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [focused, setFocused] = useState(false)
+  const near = value.length > HINT_MAX * 0.85
+  return (
+    <div>
+      <div style={{
+        display: 'flex', alignItems: 'center',
+        border: `1px solid ${focused ? T.primary : T.gray200}`,
+        borderRadius: 8,
+        background: '#fff',
+        padding: '0 10px',
+        gap: 6,
+        transition: 'border-color 0.12s',
+        boxShadow: focused ? `0 0 0 3px ${T.primary24}` : 'none',
+      }}>
+        <IconMessageQuestion size={13} style={{ color: T.fg4, flexShrink: 0 }} />
+        <input
+          value={value}
+          onChange={e => onChange(e.target.value.slice(0, HINT_MAX))}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder='e.g. "enterprise buyers asking about ROI and integration costs"'
+          style={{
+            flex: 1, border: 'none', outline: 'none', padding: '7px 0',
+            font: `400 13px/18px ${T.font}`, color: T.fg1,
+            background: 'transparent',
+          }}
+        />
+        {value.length > 0 && (
+          <span style={{ font: `400 11px/16px ${T.font}`, color: near ? T.warning : T.fg4, flexShrink: 0 }}>
+            {value.length}/{HINT_MAX}
+          </span>
+        )}
+      </div>
+      <p style={{ ...helper12, margin: '4px 0 0', color: T.fg4 }}>
+        Optional — used on the next Regenerate to tailor questions to your audience
+      </p>
+    </div>
+  )
+}
+
 /* ── Sortable question row ──────────────────────────────────────────────── */
 
 interface RowProps {
@@ -436,6 +479,7 @@ export default function StarterQuestions() {
   const [editText, setEditText]   = useState('')
   const [addingNew, setAddingNew] = useState(false)
   const [newText, setNewText]     = useState('')
+  const [aiHint, setAiHint] = useState('')
   const [previewOpen, setPreviewOpen] = useState(false)
   const [toast, setToast] = useState<ToastState | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -783,6 +827,24 @@ export default function StarterQuestions() {
           <p style={{ ...helper12, margin: '10px 0 0', color: T.fg4 }}>
             Generates 4 questions from your content. You can edit or regenerate any of them.
           </p>
+        )}
+
+        {/* Audience hint — refinement input */}
+        {crOn && (crStatus === 'ready' || crStatus === 'error') && (
+          <div style={{
+            marginTop: 12, paddingTop: 12,
+            borderTop: `1px solid ${T.divider}`,
+          }}>
+            <label style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              font: `500 12px/16px ${T.font}`, color: T.fg3,
+              marginBottom: 6,
+            }}>
+              Audience or topic focus
+              <Tip text="Tell the AI who your users are or what topics matter most. Used on the next Regenerate." />
+            </label>
+            <AiHintInput value={aiHint} onChange={setAiHint} />
+          </div>
         )}
 
         {/* No content warning */}
