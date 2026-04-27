@@ -505,13 +505,6 @@ export default function StarterQuestions() {
     if (addingNew && newInputRef.current) newInputRef.current.focus()
   }, [addingNew])
 
-  useEffect(() => {
-    if (crOn && aiQuestions.length === 0 && crStatus === 'ready') {
-      setCrOn(false)
-      setCrStatus('off')
-    }
-  }, [aiQuestions, crOn, crStatus])
-
   /* ── Handlers ── */
 
   function handleToggleCR() {
@@ -594,8 +587,15 @@ export default function StarterQuestions() {
 
   function deleteQuestion(q: Question) {
     const idx = displayedQuestions.findIndex(dq => dq.id === q.id)
-    const setter = crOn ? setAiQuestions : setManualQuestions
-    setter(prev => prev.filter(p => p.id !== q.id))
+    if (crOn) {
+      setAiQuestions(prev => prev.filter(p => p.id !== q.id))
+      if (aiQuestions.length === 1) {
+        setCrOn(false)
+        setCrStatus('off')
+      }
+    } else {
+      setManualQuestions(prev => prev.filter(p => p.id !== q.id))
+    }
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
     setToast({ question: q, originalIndex: idx })
     toastTimerRef.current = setTimeout(() => setToast(null), 10000)
@@ -606,8 +606,12 @@ export default function StarterQuestions() {
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
     const { question: q, originalIndex } = toast
     setToast(null)
-    const setter = q.source === 'ai' ? setAiQuestions : setManualQuestions
-    setter(prev => { const a = [...prev]; a.splice(originalIndex, 0, q); return a })
+    if (q.source === 'ai') {
+      setAiQuestions(prev => { const a = [...prev]; a.splice(originalIndex, 0, q); return a })
+      if (!crOn) { setCrOn(true); setCrStatus('ready') }
+    } else {
+      setManualQuestions(prev => { const a = [...prev]; a.splice(originalIndex, 0, q); return a })
+    }
   }
 
   function addQuestion() {
