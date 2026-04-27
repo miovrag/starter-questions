@@ -2,7 +2,7 @@ import StarterQuestions from '@/components/StarterQuestions'
 
 export default function Home() {
   return (
-    <div style={{ minHeight: '100vh', background: '#F8F7FA', padding: '40px 16px' }}>
+    <div style={{ minHeight: '100vh', background: '#FAFAFA', padding: '40px 16px' }}>
       <div style={{ maxWidth: 680, margin: '0 auto' }}>
         {/* Breadcrumb */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 24 }}>
@@ -14,9 +14,9 @@ export default function Home() {
         {/* Settings card */}
         <div style={{
           background: '#fff',
-          border: '1px solid #EBE9F1',
+          border: '1px solid #E5E5E5',
           borderRadius: 6,
-          boxShadow: '0 4px 24px rgba(75,70,92,0.08)',
+          boxShadow: '0 4px 24px rgba(23,23,23,0.06)',
           padding: 24,
         }}>
           <StarterQuestions />
