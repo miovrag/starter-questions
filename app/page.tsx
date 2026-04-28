@@ -19,7 +19,7 @@ export default function Home() {
         {/* Demo tier switcher */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 4,
-          background: '#F5F5F5', borderRadius: 8, padding: 4,
+          background: '#F5F5F5', borderRadius: 16, padding: 4,
           width: 'fit-content', margin: '0 auto 32px',
         }}>
           {TIERS.map(t => (
@@ -28,7 +28,7 @@ export default function Home() {
                 font: `${tier === t.value ? '600' : '400'} 13px/18px "Inter",sans-serif`,
                 color: tier === t.value ? '#171717' : '#737373',
                 background: tier === t.value ? '#fff' : 'transparent',
-                border: 'none', borderRadius: 6,
+                border: 'none', borderRadius: 12,
                 padding: '6px 20px', cursor: 'pointer',
                 boxShadow: tier === t.value ? '0 1px 3px rgba(23,23,23,0.10)' : 'none',
                 transition: 'all 0.12s',
@@ -49,7 +49,7 @@ export default function Home() {
         <div style={{
           background: '#fff',
           border: '1px solid #E5E5E5',
-          borderRadius: 6,
+          borderRadius: 16,
           boxShadow: '0 4px 24px rgba(23,23,23,0.06)',
           padding: 24,
         }}>

@@ -23,15 +23,12 @@ import {
   IconPencil,
   IconTrash,
   IconPlus,
-  IconAlertCircle,
-  IconLoader2,
   IconX,
   IconInfoCircle,
   IconArrowBackUp,
   IconGripVertical,
-  IconMessageQuestion,
-  IconRefresh,
   IconCheck,
+  IconMessageQuestion,
 } from '@tabler/icons-react'
 
 /* ── Types ──────────────────────────────────────────────────────────────── */
@@ -41,10 +38,8 @@ export type Tier = 'free' | 'premium' | 'enterprise'
 interface Question {
   id: string
   text: string
-  source: 'manual' | 'ai'
+  source: 'manual' | 'page'
 }
-
-type CRStatus = 'off' | 'generating' | 'ready' | 'error' | 'no-content'
 
 interface ToastState {
   question: Question
@@ -56,33 +51,8 @@ interface ToastState {
 const MAX_QUESTIONS = 4
 const MAX_CHARS = 80
 
-const AI_QUESTION_SETS: Question[][] = [
-  [
-    { id: 'ai-1', text: 'What are the key growth drivers in the analytical HPLC market?', source: 'ai' },
-    { id: 'ai-2', text: 'Which regions have the highest LC/MS adoption rate?', source: 'ai' },
-    { id: 'ai-3', text: 'How does column chemistry affect separation efficiency?', source: 'ai' },
-    { id: 'ai-4', text: 'Who are the leading vendors in the GC/MS equipment market?', source: 'ai' },
-  ],
-  [
-    { id: 'ai-5', text: 'What is the forecasted CAGR for the global HPLC market through 2030?', source: 'ai' },
-    { id: 'ai-6', text: 'How do regulatory changes affect LC/MS instrument demand?', source: 'ai' },
-    { id: 'ai-7', text: 'What are the main applications driving GC/MS market growth?', source: 'ai' },
-    { id: 'ai-8', text: 'Which end-user segments spend the most on analytical columns?', source: 'ai' },
-  ],
-]
-
-const AI_POOL: string[] = [
-  'What is the total addressable market for HPLC instruments in pharma?',
-  'How has mass spectrometry adoption changed in the last five years?',
-  'What are the top competitive differentiators for GC/MS vendors?',
-  'How does column selectivity influence method development time?',
-  'What role does automation play in modern analytical workflows?',
-  'Which emerging applications are driving demand for high-resolution LC/MS?',
-  'How are supply chain disruptions affecting analytical instrument pricing?',
-  'What is the market share breakdown between benchtop and portable GC systems?',
-]
-
-const INITIAL_MANUAL: Question[] = [
+const INITIAL_QUESTIONS: Question[] = [
+  { id: 'q-0', text: 'What are the key growth drivers in the analytical HPLC market?', source: 'page' },
   { id: 'q-1', text: 'What is the global market for Analytical HPLC?', source: 'manual' },
   { id: 'q-2', text: 'Tell me about the LC/MS market.', source: 'manual' },
   { id: 'q-3', text: 'What is the combined GC and GC/MS market by geography?', source: 'manual' },
@@ -91,42 +61,28 @@ const INITIAL_MANUAL: Question[] = [
 /* ── Design tokens ──────────────────────────────────────────────────────── */
 
 const T = {
-  // Brand
   primary:       '#7367F0',
   primaryHover:  '#685DD8',
   primaryActive: '#5C53C0',
   primary8:      'rgba(115,103,240,0.08)',
-  primary16:     'rgba(115,103,240,0.16)',
   primary24:     'rgba(115,103,240,0.24)',
-  primary100:    '#EAE8FD',  // --cg-primary-100
-  primary200:    '#D5D1FB',  // --cg-primary-200
+  primary100:    '#EAE8FD',
+  primary200:    '#D5D1FB',
   primaryShadow: '0 2px 6px rgba(115,103,240,0.35)',
-  // Neutrals
   fg1:    '#171717',
   fg2:    '#404040',
   fg3:    '#737373',
   fg4:    '#A3A3A3',
-  gray50: '#FAFAFA',
   gray100:'#F5F5F5',
   gray200:'#E5E5E5',
   gray300:'#D4D4D4',
-  divider:'#E5E5E5',   // --cg-divider
-  border: '#E5E5E5',   // --cg-gray-200
-  hoverBg:'rgba(38,38,38,0.04)',  // --cg-gray-hover-menu
-  // Semantic
-  success:    '#28C76F',
-  success100: '#D6F5E3',  // --cg-success-100
-  successText:'#1F9C57',
+  divider:'#E5E5E5',
+  border: '#E5E5E5',
+  hoverBg:'rgba(38,38,38,0.04)',
+  success100: '#D6F5E3',
   warning:    '#FF9F43',
-  warning100: '#FFE4C4',  // --cg-warning-100
-  warningText:'#C27B34',
   danger:     '#EA5455',
-  danger100:  '#FBDCDC',  // --cg-danger-100
-  // Shadows (--cg-shadow-*)
-  shadowSm:   '0 2px 4px rgba(23,23,23,0.08)',
-  shadowCard: '0 4px 24px rgba(23,23,23,0.06)',
   shadowModal:'0 8px 32px rgba(23,23,23,0.16)',
-  // Type
   font: '"Inter", system-ui, -apple-system, sans-serif',
 } as const
 
@@ -134,24 +90,6 @@ const helper12: CSSProperties = { font: `400 12px/16px ${T.font}`, color: T.fg3 
 const body14: CSSProperties   = { font: `400 14px/20px ${T.font}`, color: T.fg2 }
 
 const DraggingCtx = createContext(false)
-
-/* ── AiBadge ────────────────────────────────────────────────────────────── */
-
-function AiBadge() {
-  return (
-    <span style={{
-      background: T.primary100,
-      color: '#5C53C0',
-      borderRadius: 4,
-      padding: '1px 6px',
-      font: `600 10px/14px ${T.font}`,
-      whiteSpace: 'nowrap',
-      flexShrink: 0,
-    }}>
-      AI
-    </span>
-  )
-}
 
 /* ── Tooltip ────────────────────────────────────────────────────────────── */
 
@@ -191,7 +129,7 @@ function Tooltip({ label, children, side = 'top', width }: {
           alignItems: 'center',
           background: '#fff',
           color: T.fg2,
-          borderRadius: 6,
+          borderRadius: 16,
           padding: '5px 10px',
           font: `400 12px/16px ${T.font}`,
           whiteSpace: width ? 'normal' : 'nowrap',
@@ -227,15 +165,34 @@ function Tip({ text }: { text: string }) {
   )
 }
 
-/* ── PlanTag ────────────────────────────────────────────────────────────── */
+/* ── PageBadge ──────────────────────────────────────────────────────────── */
 
-function LockIcon() {
+function PageBadge() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-      <path d="M5.33337 7.33333V4.66667C5.33337 3.19391 6.52728 2 8.00004 2C9.4728 2 10.6667 3.19391 10.6667 4.66667V7.33333M8.66671 10.6667C8.66671 11.0349 8.36823 11.3333 8.00004 11.3333C7.63185 11.3333 7.33337 11.0349 7.33337 10.6667C7.33337 10.2985 7.63185 10 8.00004 10C8.36823 10 8.66671 10.2985 8.66671 10.6667ZM4.66671 14H11.3334C12.0698 14 12.6667 13.403 12.6667 12.6667V8.66667C12.6667 7.93029 12.0698 7.33333 11.3334 7.33333H4.66671C3.93033 7.33333 3.33337 7.93029 3.33337 8.66667V12.6667C3.33337 13.403 3.93033 14 4.66671 14Z" stroke="#7367F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
+    <Tooltip label="Relevant to the page this visitor is on right now" side="top">
+      <span style={{
+        display: 'inline-flex', alignItems: 'center', gap: 3,
+        background: T.primary100,
+        color: T.primaryActive,
+        borderRadius: 4,
+        padding: '1px 6px',
+        font: `500 10px/14px ${T.font}`,
+        whiteSpace: 'nowrap',
+        flexShrink: 0,
+        cursor: 'default',
+      }}>
+        <svg width="9" height="9" viewBox="0 0 12 12" fill="none">
+          <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.4"/>
+          <path d="M6 1C6 1 4 3.5 4 6s2 5 2 5M6 1c0 0 2 2.5 2 5s-2 5-2 5M1 6h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+        </svg>
+        Page
+      </span>
+    </Tooltip>
   )
 }
+
+/* ── PlanTag ────────────────────────────────────────────────────────────── */
+
 
 function PlanTag({ plan, onClick }: { plan: 'Premium' | 'Enterprise'; onClick?: () => void }) {
   const [hov, setHov] = useState(false)
@@ -265,7 +222,7 @@ function PlanTag({ plan, onClick }: { plan: 'Premium' | 'Enterprise'; onClick?: 
         transition: 'background 0.12s',
         userSelect: 'none',
       }}>
-      <LockIcon />
+      <IconMessageQuestion size={13} />
       {plan}
     </span>
   )
@@ -281,7 +238,7 @@ const UPSELL: Record<'Premium' | 'Enterprise', {
 }> = {
   Premium: {
     title: 'Upgrade to Premium',
-    description: 'Add up to 4 starter questions that guide users from the very first message — reducing drop-off and setting context immediately.',
+    description: 'Greet every user with up to 4 questions the moment they open your agent — so every conversation starts with context.',
     features: [
       'Up to 4 custom starter questions',
       'Drag-and-drop reordering',
@@ -291,11 +248,11 @@ const UPSELL: Record<'Premium' | 'Enterprise', {
   },
   Enterprise: {
     title: 'Upgrade to Enterprise',
-    description: 'Let AI generate starter questions directly from your knowledge base, tuned to your audience and regeneratable on demand.',
+    description: 'Context-rich questions are tailored to exactly what your visitor is reading — generated from the live page your chatbot is on, not your knowledge base. Every question is relevant to that specific moment.',
     features: [
-      'AI questions from your knowledge base',
-      'Audience guidance & regeneration',
-      'Per-question regeneration',
+      'Instantly relevant to the page your visitor is on',
+      'Questions auto-refresh every 30 days',
+      'View, edit, and manage saved questions anytime',
     ],
     cta: 'Upgrade to Enterprise',
   },
@@ -312,23 +269,22 @@ function UpsellModal({ plan, onClose }: { plan: 'Premium' | 'Enterprise'; onClos
         display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 32,
         padding: 32, width: 400,
         maxWidth: 'calc(100vw - 32px)',
-        borderRadius: 12,
+        borderRadius: 16,
         borderTop: '2px solid #FFF',
         background: '#FAF8F8',
         boxShadow: T.shadowModal,
         zIndex: 61,
         animation: 'modalIn 0.2s cubic-bezier(0.2,0.8,0.2,1) forwards',
       }}>
-        {/* Intro: icon + close + title + description */}
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 12, alignSelf: 'stretch' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', alignSelf: 'stretch' }}>
             <div style={{
-              width: 44, height: 44, borderRadius: 10,
+              width: 44, height: 44, borderRadius: 16,
               background: '#E3E1FC',
               display: 'grid', placeItems: 'center', flexShrink: 0,
             }}>
               <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 16 16" fill="none">
-                <path d="M5.33337 7.33333V4.66667C5.33337 3.19391 6.52728 2 8.00004 2C9.4728 2 10.6667 3.19391 10.6667 4.66667V7.33333M8.66671 10.6667C8.66671 11.0349 8.36823 11.3333 8.00004 11.3333C7.63185 11.3333 7.33337 11.0349 7.33337 10.6667C7.33337 10.2985 7.63185 10 8.00004 10C8.36823 10 8.66671 10.2985 8.66671 10.6667ZM4.66671 14H11.3334C12.0698 14 12.6667 13.403 12.6667 12.6667V8.66667C12.6667 7.93029 12.0698 7.33333 11.3334 7.33333H4.66671C3.93033 7.33333 3.33337 7.93029 3.33337 8.66667V12.6667C3.33337 13.403 3.93033 14 4.66671 14Z" stroke="#7367F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M5.33337 7.33333V4.66667C5.33337 3.19391 6.52728 2 8.00004 2C9.4728 2 10.6667 3.19391 10.6667 4.66667V7.33333M8.66671 10.6667C8.66671 11.0349 8.36823 11.3333 8.00004 11.3333C7.63185 11.3333 7.33337 11.0349 7.33337 10.6667C7.33337 10.2985 7.63185 10 8.00004 10C8.66671 10.2985 8.66671 10.6667ZM4.66671 14H11.3334C12.0698 14 12.6667 13.403 12.6667 12.6667V8.66667C12.6667 7.93029 12.0698 7.33333 11.3334 7.33333H4.66671C3.93033 7.33333 3.33337 7.93029 3.33337 8.66667V12.6667C3.33337 13.403 3.93033 14 4.66671 14Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </div>
             <button type="button" onClick={onClose}
@@ -348,7 +304,6 @@ function UpsellModal({ plan, onClose }: { plan: 'Premium' | 'Enterprise'; onClos
           </div>
         </div>
 
-        {/* Feature list */}
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 12, alignSelf: 'stretch' }}>
           {content.features.map(f => (
             <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -363,14 +318,13 @@ function UpsellModal({ plan, onClose }: { plan: 'Premium' | 'Enterprise'; onClos
           ))}
         </ul>
 
-        {/* CTAs */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, alignSelf: 'stretch' }}>
           <button type="button"
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
               font: `600 14px/20px ${T.font}`, color: '#fff',
               background: T.primary, border: 'none',
-              borderRadius: 8, padding: '10px 20px',
+              borderRadius: 16, padding: '10px 20px',
               cursor: 'pointer', boxShadow: T.primaryShadow,
               width: '100%',
             }}
@@ -396,49 +350,6 @@ function UpsellModal({ plan, onClose }: { plan: 'Premium' | 'Enterprise'; onClos
 
 const DOCS_URL = 'https://docs.customgpt.ai/docs/how-context-rich-starter-questions-work'
 
-const HINT_MAX = 120
-
-function AiHintInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [focused, setFocused] = useState(false)
-  const near = value.length > HINT_MAX * 0.85
-  return (
-    <div>
-      <div style={{
-        display: 'flex', alignItems: 'center',
-        border: `1px solid ${focused ? T.primary : T.gray200}`,
-        borderRadius: 8,
-        background: '#fff',
-        padding: '0 10px',
-        gap: 6,
-        transition: 'border-color 0.12s',
-        boxShadow: focused ? `0 0 0 3px ${T.primary24}` : 'none',
-      }}>
-        <IconMessageQuestion size={13} style={{ color: T.fg4, flexShrink: 0 }} />
-        <input
-          value={value}
-          onChange={e => onChange(e.target.value.slice(0, HINT_MAX))}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
-          placeholder='e.g. "enterprise buyers asking about ROI and integration costs"'
-          style={{
-            flex: 1, border: 'none', outline: 'none', padding: '7px 0',
-            font: `400 13px/18px ${T.font}`, color: T.fg1,
-            background: 'transparent',
-          }}
-        />
-        {value.length > 0 && (
-          <span style={{ font: `400 11px/16px ${T.font}`, color: near ? T.warning : T.fg4, flexShrink: 0 }}>
-            {value.length}/{HINT_MAX}
-          </span>
-        )}
-      </div>
-      <p style={{ ...helper12, margin: '4px 0 0', color: T.fg4 }}>
-        Optional — used on the next Regenerate to tailor questions to your audience
-      </p>
-    </div>
-  )
-}
-
 /* ── Sortable question row ──────────────────────────────────────────────── */
 
 interface RowProps {
@@ -451,22 +362,20 @@ interface RowProps {
   onEditSave: () => void
   onEditCancel: () => void
   onDelete: (q: Question) => void
-  onRegenerate: (q: Question) => void
-  regeneratingId: string | null
   editInputRef: React.RefObject<HTMLInputElement | null>
   isFirst?: boolean
   isLast?: boolean
+  radius?: number
 }
 
 function SortableRow(props: RowProps) {
   const {
     q, editingId, editText, savedId,
     onEditStart, onEditChange, onEditSave, onEditCancel,
-    onDelete, onRegenerate, regeneratingId, editInputRef,
-    isFirst, isLast,
+    onDelete, editInputRef,
+    isFirst, isLast, radius = 6,
   } = props
 
-  const isRegenerating = regeneratingId === q.id
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: q.id })
   const [hovered, setHovered] = useState(false)
   const [focused, setFocused] = useState(false)
@@ -480,7 +389,7 @@ function SortableRow(props: RowProps) {
     gap: 8,
     padding: '10px 16px',
     borderBottom: isLast ? 'none' : `1px solid ${T.divider}`,
-    borderRadius: isFirst && isLast ? 6 : isFirst ? '6px 6px 0 0' : isLast ? '0 0 6px 6px' : 0,
+    borderRadius: isFirst && isLast ? radius : isFirst ? `${radius}px ${radius}px 0 0` : isLast ? `0 0 ${radius}px ${radius}px` : 0,
     background: isDragging
       ? T.primary8
       : isSaved
@@ -502,7 +411,6 @@ function SortableRow(props: RowProps) {
       onFocus={() => setFocused(true)}
       onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false) }}
     >
-      {/* Drag handle — always visible at 30% opacity, full on hover */}
       <Tooltip label="Drag to reorder" side="top">
         <button
           {...listeners}
@@ -527,14 +435,6 @@ function SortableRow(props: RowProps) {
         </button>
       </Tooltip>
 
-      {/* AI badge or spacer */}
-      {q.source === 'ai' ? (
-        <span style={{ flexShrink: 0 }}><AiBadge /></span>
-      ) : (
-        <span style={{ width: 28, flexShrink: 0 }} />
-      )}
-
-      {/* Text / editor */}
       <div style={{ flex: 1, minWidth: 0 }}>
         {isEditing ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -550,7 +450,7 @@ function SortableRow(props: RowProps) {
                 flex: 1, minWidth: 0,
                 padding: '0 8px',
                 border: `1px solid ${T.primary}`,
-                borderRadius: 8,
+                borderRadius: 16,
                 boxShadow: `0 0 0 3px ${T.primary24}`,
                 font: `400 14px/20px ${T.font}`,
                 lineHeight: '20px',
@@ -568,11 +468,6 @@ function SortableRow(props: RowProps) {
               Save
             </button>
           </div>
-        ) : isRegenerating ? (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <IconLoader2 size={13} style={{ animation: 'spin 1s linear infinite', flexShrink: 0, color: T.fg4 }} />
-            <span style={{ ...body14, color: T.fg4 }}>Generating…</span>
-          </span>
         ) : (
           <span
             tabIndex={0}
@@ -587,7 +482,6 @@ function SortableRow(props: RowProps) {
         )}
       </div>
 
-      {/* Actions */}
       {!isEditing && (
         <div style={{
           display: 'flex',
@@ -597,17 +491,6 @@ function SortableRow(props: RowProps) {
           transition: 'opacity 0.12s',
           flexShrink: 0,
         }}>
-          {q.source === 'ai' && (
-            <Tooltip label="Regenerate question" side="top">
-              <button type="button" onClick={() => onRegenerate(q)}
-                tabIndex={showActions ? 0 : -1}
-                style={{ color: T.fg3, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '2px 6px', borderRadius: 4 }}
-                onMouseEnter={e => (e.currentTarget.style.color = T.primary)}
-                onMouseLeave={e => (e.currentTarget.style.color = T.fg3)}>
-                <IconRefresh size={15} />
-              </button>
-            </Tooltip>
-          )}
           <Tooltip label="Edit" side="top">
             <button type="button" onClick={() => onEditStart(q)}
               tabIndex={showActions ? 0 : -1}
@@ -633,24 +516,16 @@ function SortableRow(props: RowProps) {
 /* ── Main component ─────────────────────────────────────────────────────── */
 
 export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier }) {
-  const [manualQuestions, setManualQuestions] = useState<Question[]>(INITIAL_MANUAL)
-  const [aiQuestions, setAiQuestions]         = useState<Question[]>([])
-  const [crOn, setCrOn]               = useState(false)
-  const [crStatus, setCrStatus]       = useState<CRStatus>('off')
-  const [genCount, setGenCount]       = useState(0)
-  const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
+  const [questions, setQuestions] = useState<Question[]>(INITIAL_QUESTIONS)
   const [anyDragging, setAnyDragging] = useState(false)
   const [savedId, setSavedId]         = useState<string | null>(null)
-  const [showAiGuard, setShowAiGuard] = useState(false)
-  const poolIndexRef    = useRef(0)
-  const aiGuardShownRef = useRef(false)
-  const savedTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText]   = useState('')
   const [addingNew, setAddingNew] = useState(false)
   const [newText, setNewText]     = useState('')
-  const [aiHint, setAiHint] = useState('')
   const [upsellPlan, setUpsellPlan] = useState<'Premium' | 'Enterprise' | null>(null)
+  const [showHowItWorks, setShowHowItWorks] = useState(false)
   const [toast, setToast] = useState<ToastState | null>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const editInputRef  = useRef<HTMLInputElement | null>(null)
@@ -661,8 +536,9 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
-  const displayedQuestions: Question[] = crOn ? aiQuestions : manualQuestions
-  const totalCount = displayedQuestions.length
+  const pageQuestions   = questions.filter(q => q.source === 'page')
+  const manualQuestions = questions.filter(q => q.source === 'manual')
+  const totalCount = questions.length
   const atLimit    = totalCount >= MAX_QUESTIONS
 
   useEffect(() => {
@@ -675,72 +551,20 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
     if (addingNew && newInputRef.current) newInputRef.current.focus()
   }, [addingNew])
 
-  useEffect(() => {
-    if (tier !== 'enterprise' && crOn) {
-      setAiQuestions([]); setCrOn(false); setCrStatus('off')
-    }
-  }, [tier])
-
   /* ── Handlers ── */
 
-  function handleToggleCR() {
-    if (!crOn) {
-      // One-time guard when manual questions exist
-      if (manualQuestions.length > 0 && !aiGuardShownRef.current) {
-        setShowAiGuard(true)
-        return
-      }
-      enableAI()
-    } else {
-      setAiQuestions([])
-      setCrOn(false); setCrStatus('off')
+  function handleDragEnd(source: 'page' | 'manual') {
+    return (event: DragEndEvent) => {
+      const { active, over } = event
+      if (!over || active.id === over.id) return
+      const aId = String(active.id), oId = String(over.id)
+      setQuestions(prev => {
+        const group = prev.filter(q => q.source === source)
+        const rest  = prev.filter(q => q.source !== source)
+        const reordered = arrayMove(group, group.findIndex(q => q.id === aId), group.findIndex(q => q.id === oId))
+        return source === 'page' ? [...reordered, ...rest] : [...rest, ...reordered]
+      })
     }
-  }
-
-  function enableAI() {
-    aiGuardShownRef.current = true
-    setShowAiGuard(false)
-    setCrOn(true); setCrStatus('generating')
-    setTimeout(() => {
-      setAiQuestions(AI_QUESTION_SETS[0])
-      setCrStatus('ready')
-      setGenCount(1)
-    }, 1800)
-  }
-
-  function handleRegenerateOne(q: Question) {
-    if (regeneratingId) return
-    setRegeneratingId(q.id)
-    setTimeout(() => {
-      const currentTexts = aiQuestions.map(aq => aq.text)
-      const available = AI_POOL.filter(t => !currentTexts.includes(t))
-      const pool = available.length > 0 ? available : AI_POOL
-      const next = pool[poolIndexRef.current % pool.length]
-      poolIndexRef.current += 1
-      setAiQuestions(prev => prev.map(aq =>
-        aq.id === q.id ? { ...aq, id: `ai-${Date.now()}`, text: next } : aq
-      ))
-      setRegeneratingId(null)
-    }, 1200)
-  }
-
-  function handleRegenerate() {
-    setCrStatus('generating')
-    setAiQuestions([])
-    setTimeout(() => {
-      const nextSet = AI_QUESTION_SETS[genCount % AI_QUESTION_SETS.length]
-      setAiQuestions(nextSet)
-      setCrStatus('ready')
-      setGenCount(c => c + 1)
-    }, 1800)
-  }
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    const aId = String(active.id), oId = String(over.id)
-    const setter = crOn ? setAiQuestions : setManualQuestions
-    setter(prev => arrayMove(prev, prev.findIndex(q => q.id === aId), prev.findIndex(q => q.id === oId)))
   }
 
   function startEdit(q: Question) { setEditingId(q.id); setEditText(q.text) }
@@ -749,9 +573,7 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
     if (!editingId) return
     const t = editText.trim()
     if (!t) { cancelEdit(); return }
-    const up = (prev: Question[]) => prev.map(q => q.id === editingId ? { ...q, text: t } : q)
-    if (crOn) setAiQuestions(up); else setManualQuestions(up)
-    // Flash green confirmation on the saved row
+    setQuestions(prev => prev.map(q => q.id === editingId ? { ...q, text: t } : q))
     const id = editingId
     setSavedId(id)
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
@@ -762,16 +584,8 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
   function cancelEdit() { setEditingId(null); setEditText('') }
 
   function deleteQuestion(q: Question) {
-    const idx = displayedQuestions.findIndex(dq => dq.id === q.id)
-    if (crOn) {
-      setAiQuestions(prev => prev.filter(p => p.id !== q.id))
-      if (aiQuestions.length === 1) {
-        setCrOn(false)
-        setCrStatus('off')
-      }
-    } else {
-      setManualQuestions(prev => prev.filter(p => p.id !== q.id))
-    }
+    const idx = questions.findIndex(mq => mq.id === q.id)
+    setQuestions(prev => prev.filter(p => p.id !== q.id))
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
     setToast({ question: q, originalIndex: idx })
     toastTimerRef.current = setTimeout(() => setToast(null), 10000)
@@ -782,63 +596,20 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
     const { question: q, originalIndex } = toast
     setToast(null)
-    if (q.source === 'ai') {
-      setAiQuestions(prev => { const a = [...prev]; a.splice(originalIndex, 0, q); return a })
-      if (!crOn) { setCrOn(true); setCrStatus('ready') }
-    } else {
-      setManualQuestions(prev => { const a = [...prev]; a.splice(originalIndex, 0, q); return a })
-    }
+    setQuestions(prev => { const a = [...prev]; a.splice(originalIndex, 0, q); return a })
   }
 
   function addQuestion() {
     const t = newText.trim()
     if (!t || atLimit) return
-    const source = crOn ? 'ai' : 'manual' as const
-    const setter = crOn ? setAiQuestions : setManualQuestions
-    setter(prev => [...prev, { id: `q-${Date.now()}`, text: t, source }])
+    setQuestions(prev => [...prev, { id: `q-${Date.now()}`, text: t, source: 'manual' }])
     setNewText(''); setAddingNew(false)
   }
-
-  /* ── Status chip ── */
-
-  function StatusChip() {
-    const base: CSSProperties = {
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '2px 8px', borderRadius: 4,
-      font: `500 12px/16px ${T.font}`, whiteSpace: 'nowrap',
-    }
-    if (!crOn) return (
-      <span style={{ ...base, background: T.gray100, color: T.fg3 }}>Your questions</span>
-    )
-    if (crStatus === 'generating') return (
-      <span style={{ ...base, background: T.primary100, color: '#5C53C0' }}>
-        <IconLoader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> Generating…
-      </span>
-    )
-    if (crStatus === 'no-content') return (
-      <span style={{ ...base, background: T.warning100, color: T.warningText }}>
-        <IconAlertCircle size={11} /> Add content first
-      </span>
-    )
-    if (crStatus === 'error') return (
-      <span style={{ ...base, background: T.danger100, color: T.danger }}>
-        <IconAlertCircle size={11} /> Generation failed
-      </span>
-    )
-    return (
-      <span style={{ ...base, background: T.success100, color: T.successText }}>
-        <IconBolt size={11} /> {aiQuestions.length} AI questions ready
-      </span>
-    )
-  }
-
-  /* ── Shared row props ── */
 
   const rowProps = {
     editingId, editText, savedId,
     onEditStart: startEdit, onEditChange: setEditText, onEditSave: saveEdit, onEditCancel: cancelEdit,
-    onDelete: deleteQuestion, onRegenerate: handleRegenerateOne,
-    regeneratingId, editInputRef,
+    onDelete: deleteQuestion, editInputRef,
   }
 
   /* ── Render ── */
@@ -846,71 +617,17 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
   return (
     <>
       <style>{`
-        @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes shimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
-        @keyframes fadeSlideIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes modalIn{from{opacity:0;transform:translate(-50%,calc(-50% + 8px))}to{opacity:1;transform:translate(-50%,-50%)}}
         @keyframes tooltipIn{from{opacity:0}to{opacity:1}}
+        @keyframes modalIn{from{opacity:0;transform:translate(-50%,calc(-50% + 8px))}to{opacity:1;transform:translate(-50%,-50%)}}
+        @keyframes fadeSlideIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
       `}</style>
 
-      {/* Upsell modal */}
       {upsellPlan && <UpsellModal plan={upsellPlan} onClose={() => setUpsellPlan(null)} />}
-
-      {/* AI guard modal */}
-      {showAiGuard && (
-        <>
-          <div
-            onClick={() => setShowAiGuard(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(47,61,57,0.5)', zIndex: 60 }}
-          />
-          <div style={{
-            position: 'fixed',
-            top: '50%', left: '50%',
-            background: '#fff',
-            borderRadius: 8,
-            padding: 24,
-            width: 360,
-            maxWidth: 'calc(100vw - 32px)',
-            boxShadow: T.shadowModal,
-            zIndex: 61,
-            animation: 'modalIn 0.2s cubic-bezier(0.2,0.8,0.2,1) forwards',
-          }}>
-            <h3 style={{ font: `600 16px/24px ${T.font}`, color: T.fg1, margin: '0 0 8px' }}>
-              Enable AI questions?
-            </h3>
-            <p style={{ font: `400 14px/20px ${T.font}`, color: T.fg3, margin: '0 0 20px' }}>
-              AI questions will replace your current list. If you turn AI off, your questions are restored.
-            </p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button type="button" onClick={() => setShowAiGuard(false)}
-                style={{
-                  font: `600 13px/18px ${T.font}`, color: T.fg2,
-                  background: '#fff', border: `1px solid ${T.border}`,
-                  borderRadius: 8, padding: '7px 16px', cursor: 'pointer',
-                }}>
-                Cancel
-              </button>
-              <button type="button" onClick={enableAI}
-                style={{
-                  font: `600 13px/18px ${T.font}`, color: '#fff',
-                  background: T.primary, border: 'none',
-                  borderRadius: 8, padding: '7px 16px', cursor: 'pointer',
-                  boxShadow: T.primaryShadow,
-                  display: 'flex', alignItems: 'center', gap: 6,
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = T.primaryHover)}
-                onMouseLeave={e => (e.currentTarget.style.background = T.primary)}>
-                <IconBolt size={14} /> Enable AI
-              </button>
-            </div>
-          </div>
-        </>
-      )}
 
       {/* Section header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <span style={{
-          width: 36, height: 36, borderRadius: 8,
+          width: 36, height: 36, borderRadius: 16,
           background: tier === 'free' ? T.gray100 : T.primary100,
           color: tier === 'free' ? T.fg4 : T.primary,
           display: 'grid', placeItems: 'center', flexShrink: 0,
@@ -925,230 +642,115 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
             {tier === 'free' && <PlanTag plan="Premium" onClick={() => setUpsellPlan('Premium')} />}
           </div>
           <p style={{ ...helper12, margin: 0 }}>
-            Shown to users when they open your agent
+            Shown to users the moment they open your agent — including questions tailored to the page they're on
           </p>
         </div>
-        <Tip text="Add up to 4 questions to help users start the conversation." />
+        <Tip text="Up to 4 questions shown before the first message is sent. On Enterprise, context-rich questions are added automatically — tailored to the exact page your visitor is reading." />
       </div>
 
-      {/* Content wrapper — real UI always rendered; disabled + overlay for Free */}
+      {/* Content wrapper */}
       <div style={{ position: 'relative' }}>
       <div style={tier === 'free' ? {
         opacity: 0.4, pointerEvents: 'none', userSelect: 'none',
       } : {}}>
 
-      {/* AI toggle card */}
-      <div style={{
-        border: `1px solid ${crOn ? '#D5D1FB' : T.divider}`,
-        borderRadius: 6,
-        background: crOn ? T.primary8 : '#fff',
-        padding: '16px 20px',
-        marginBottom: 12,
-        transition: 'all 0.15s',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ font: `500 14px/20px ${T.font}`, color: tier === 'premium' ? T.fg3 : T.fg1 }}>
-                AI-generated questions
-              </span>
-              {tier === 'premium'
-                ? <PlanTag plan="Enterprise" onClick={() => setUpsellPlan('Enterprise')} />
-                : <Tip text="Automatically generated from your uploaded documents and URLs." />}
-            </div>
-            <p style={{ ...helper12, margin: '2px 0 0' }}>Auto-created from your content</p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            {tier === 'enterprise' && <StatusChip />}
-            {tier === 'enterprise' && crOn && crStatus === 'ready' && (
-              <button type="button" onClick={handleRegenerate}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 4,
-                  font: `500 12px/16px ${T.font}`,
-                  color: T.fg3, background: 'none',
-                  border: `1px solid ${T.gray200}`,
-                  borderRadius: 6, padding: '3px 8px',
-                  cursor: 'pointer', flexShrink: 0,
-                  transition: 'color 0.12s, border-color 0.12s',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.color = T.primary; e.currentTarget.style.borderColor = T.primary }}
-                onMouseLeave={e => { e.currentTarget.style.color = T.fg3; e.currentTarget.style.borderColor = T.gray200 }}
-              >
-                <IconRefresh size={13} /> Regenerate
-              </button>
-            )}
-            {tier === 'enterprise' && crOn && crStatus === 'error' && (
-              <button type="button" onClick={handleRegenerate}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 4,
-                  font: `500 12px/16px ${T.font}`,
-                  color: T.danger, background: 'none',
-                  border: `1px solid rgba(234,84,85,0.3)`,
-                  borderRadius: 6, padding: '3px 8px',
-                  cursor: 'pointer', flexShrink: 0,
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = T.danger }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(234,84,85,0.3)' }}
-              >
-                <IconRefresh size={13} /> Retry
-              </button>
-            )}
-            {/* Toggle — disabled on Premium */}
-            {tier === 'premium' ? (
-              <Tooltip label="Upgrade to Enterprise to use AI questions" side="top" width={200}>
-                <button type="button" disabled aria-disabled="true"
-                  style={{
-                    position: 'relative', width: 36, height: 20,
-                    borderRadius: 1000, background: T.gray200,
-                    border: 'none', cursor: 'not-allowed', padding: 0,
-                    flexShrink: 0, outline: 'none', opacity: 0.6,
-                  }}>
-                  <span style={{
-                    position: 'absolute', top: 3, left: 3,
-                    width: 14, height: 14,
-                    borderRadius: '50%', background: '#fff',
-                    boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
-                  }} />
-                </button>
-              </Tooltip>
-            ) : (
-              <button
-                type="button" role="switch"
-                aria-checked={crOn}
-                aria-label="Enable AI-generated starter questions"
-                onClick={handleToggleCR}
-                style={{
-                  position: 'relative', width: 36, height: 20,
-                  borderRadius: 1000,
-                  background: crOn ? T.primary : T.gray300,
-                  border: 'none', cursor: 'pointer', padding: 0,
-                  transition: 'background 0.15s', flexShrink: 0, outline: 'none',
-                }}
-              >
-                <span style={{
-                  position: 'absolute', top: 3, left: crOn ? 19 : 3,
-                  width: 14, height: 14,
-                  borderRadius: '50%', background: '#fff',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
-                  transition: 'left 0.15s',
-                }} />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Priming copy — visible only when AI is off */}
-        {!crOn && tier !== 'premium' && (
-          <p style={{ ...helper12, margin: '10px 0 0', color: T.fg4 }}>
-            Generates 4 questions from your content. You can edit or regenerate any of them.
-          </p>
-        )}
-        {tier === 'premium' && (
-          <p style={{ ...helper12, margin: '10px 0 0', color: T.fg4 }}>
-            AI question generation requires an Enterprise plan.{' '}
-            <a href={DOCS_URL} target="_blank" rel="noopener noreferrer"
-              style={{ color: T.fg3, textDecoration: 'underline' }}>
-              Learn more ↗
-            </a>
-          </p>
-        )}
-
-        {/* Audience hint — refinement input */}
-        {crOn && (crStatus === 'ready' || crStatus === 'error') && (
+      {/* Context-rich group — Enterprise */}
+      {tier === 'enterprise' && pageQuestions.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
           <div style={{
-            marginTop: 12, paddingTop: 12,
-            borderTop: `1px solid ${T.divider}`,
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '0 4px', marginBottom: 6,
           }}>
-            <label style={{
-              display: 'flex', alignItems: 'center', gap: 4,
-              font: `500 12px/16px ${T.font}`, color: T.fg3,
-              marginBottom: 6,
-            }}>
-              Audience or topic focus
-              <Tip text="Tell the AI who your users are or what topics matter most. Used on the next Regenerate." />
-            </label>
-            <AiHintInput value={aiHint} onChange={setAiHint} />
+            <span style={{ font: `500 11px/16px ${T.font}`, color: T.fg4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Context-rich
+            </span>
+            <div style={{ flex: 1, height: 1, background: T.divider }} />
           </div>
-        )}
-
-        {/* No content warning */}
-        {crOn && crStatus === 'no-content' && (
-          <div style={{
-            display: 'flex', alignItems: 'flex-start', gap: 8,
-            marginTop: 12, padding: '10px 12px',
-            background: T.warning100, border: `1px solid rgba(255,159,67,0.24)`,
-            borderRadius: 6,
-          }}>
-            <IconAlertCircle size={14} style={{ color: T.warning, flexShrink: 0, marginTop: 1 }} />
-            <p style={{ font: `400 12px/18px ${T.font}`, color: T.warningText, margin: 0 }}>
-              AI questions need a knowledge source.{' '}
-              <button type="button" style={{ font: `600 12px/18px ${T.font}`, color: T.warningText, background: 'none', border: 'none', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
-                Upload a document or add a URL.
-              </button>
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Question list */}
-      {crStatus === 'generating' ? (
-        <div style={{
-          border: `1px solid ${T.divider}`,
-          borderRadius: 6, background: '#fff',
-          marginBottom: 12, overflow: 'hidden',
-        }}>
-          {[72, 56, 84, 60].map((w, i) => (
-            <div key={i} style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '10px 16px',
-              borderBottom: i < 3 ? `1px solid ${T.divider}` : 'none',
-            }}>
+          <DraggingCtx.Provider value={anyDragging}>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={() => setAnyDragging(true)}
+              onDragEnd={e => { setAnyDragging(false); handleDragEnd('page')(e) }}
+              onDragCancel={() => setAnyDragging(false)}
+            >
               <div style={{
-                width: 16, height: 16, borderRadius: 3, flexShrink: 0,
-                background: 'linear-gradient(90deg,rgba(115,103,240,0.08) 0%,rgba(115,103,240,0.20) 50%,rgba(115,103,240,0.08) 100%)',
-                backgroundSize: '600px 100%',
-                animation: `shimmer 1.6s ease-in-out infinite`,
-                animationDelay: `${i * 0.12}s`,
-              }} />
-              <div style={{ width: 28, flexShrink: 0 }} />
-              <div style={{
-                height: 20, borderRadius: 4,
-                width: `${w}%`,
-                background: 'linear-gradient(90deg,rgba(115,103,240,0.07) 0%,rgba(115,103,240,0.18) 50%,rgba(115,103,240,0.07) 100%)',
-                backgroundSize: '600px 100%',
-                animation: `shimmer 1.6s ease-in-out infinite`,
-                animationDelay: `${i * 0.12}s`,
-              }} />
-            </div>
-          ))}
+                border: `1px solid ${T.divider}`,
+                borderRadius: 16, background: '#fff', overflow: 'hidden',
+              }}>
+                <SortableContext items={pageQuestions.map(q => q.id)} strategy={verticalListSortingStrategy}>
+                  {pageQuestions.map((q, i) => (
+                    <SortableRow key={q.id} q={q} {...rowProps} radius={16}
+                      isFirst={i === 0} isLast={i === pageQuestions.length - 1} />
+                  ))}
+                </SortableContext>
+              </div>
+            </DndContext>
+          </DraggingCtx.Provider>
         </div>
-      ) : displayedQuestions.length > 0 ? (
-        <DraggingCtx.Provider value={anyDragging}>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragStart={() => setAnyDragging(true)}
-            onDragEnd={e => { setAnyDragging(false); handleDragEnd(e) }}
-            onDragCancel={() => setAnyDragging(false)}
+      )}
+
+      {/* Context-rich locked — Premium */}
+
+      {tier === 'premium' && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '0 4px', marginBottom: 6,
+          }}>
+            <span style={{ font: `500 11px/16px ${T.font}`, color: T.fg4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Context-rich
+            </span>
+            <div style={{ flex: 1, height: 1, background: T.divider }} />
+          </div>
+          <div
+            onClick={() => setUpsellPlan('Enterprise')}
+            style={{
+              border: `1px dashed ${T.gray300}`,
+              borderRadius: 16,
+              padding: '14px 16px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+              background: T.gray100,
+              cursor: 'pointer',
+              transition: 'border-color 0.12s, background 0.12s',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = T.primary; (e.currentTarget as HTMLDivElement).style.background = T.primary8 }}
+            onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = T.gray300; (e.currentTarget as HTMLDivElement).style.background = T.gray100 }}
           >
-            <div style={{
-              border: `1px solid ${T.divider}`,
-              borderRadius: 6,
-              background: '#fff',
-              marginBottom: 12,
-              overflow: 'visible',
-              animation: crOn ? 'fadeSlideIn 0.28s cubic-bezier(0.2,0.7,0.3,1) both' : undefined,
-            }}>
-              <SortableContext items={displayedQuestions.map(q => q.id)} strategy={verticalListSortingStrategy}>
-                {displayedQuestions.map((q, i) => (
-                  <SortableRow key={q.id} q={q} {...rowProps}
-                    isFirst={i === 0} isLast={i === displayedQuestions.length - 1} />
-                ))}
-              </SortableContext>
-            </div>
-          </DndContext>
-        </DraggingCtx.Provider>
-      ) : null}
+            <span style={{ font: `400 13px/18px ${T.font}`, color: T.fg4 }}>
+              Questions tailored to the exact page your visitor is reading
+            </span>
+            <PlanTag plan="Enterprise" />
+          </div>
+        </div>
+      )}
+
+      {/* Manual group */}
+      <DraggingCtx.Provider value={anyDragging}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={() => setAnyDragging(true)}
+          onDragEnd={e => { setAnyDragging(false); handleDragEnd('manual')(e) }}
+          onDragCancel={() => setAnyDragging(false)}
+        >
+          <div style={{ marginBottom: 12 }}>
+            {manualQuestions.length > 0 && (
+              <div style={{
+                border: `1px solid ${T.divider}`,
+                borderRadius: 16, background: '#fff', overflow: 'hidden',
+              }}>
+                <SortableContext items={manualQuestions.map(q => q.id)} strategy={verticalListSortingStrategy}>
+                  {manualQuestions.map((q, i) => (
+                    <SortableRow key={q.id} q={q} {...rowProps}
+                      isFirst={i === 0} isLast={i === manualQuestions.length - 1} />
+                  ))}
+                </SortableContext>
+              </div>
+            )}
+          </div>
+        </DndContext>
+      </DraggingCtx.Provider>
 
       {/* Add question + counter */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
@@ -1158,7 +760,7 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
               flex: 1,
               border: `1px solid ${T.primary}`,
               boxShadow: `0 0 0 3px ${T.primary24}`,
-              borderRadius: 8, padding: '10px 16px',
+              borderRadius: 16, padding: '10px 16px',
               background: '#fff',
             }}>
               <input
@@ -1169,7 +771,7 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
                   if (e.key === 'Enter') addQuestion()
                   if (e.key === 'Escape') { setAddingNew(false); setNewText('') }
                 }}
-                placeholder="Type a question your users often ask…"
+                placeholder="What do your users typically ask first?"
                 style={{
                   width: '100%', border: 'none', outline: 'none', padding: 0,
                   font: `400 14px/20px ${T.font}`, color: T.fg1,
@@ -1203,9 +805,9 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
                 font: `500 13px/18px ${T.font}`, color: T.primary,
                 background: 'transparent',
                 border: '1px solid transparent',
-                borderRadius: 6, padding: '7px 12px',
+                borderRadius: 16, padding: '7px 12px',
                 cursor: 'pointer',
-                transition: 'background 0.12s, color 0.12s',
+                transition: 'background 0.12s',
               }}
               onMouseEnter={e => (e.currentTarget.style.background = T.primary100)}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -1221,6 +823,137 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
         </span>
       </div>
 
+      {/* Context-rich entry point */}
+      <div style={{
+        marginTop: 4,
+        paddingTop: 16,
+        borderTop: `1px solid ${T.divider}`,
+      }}>
+        {/* Title row */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+              <span style={{ font: `500 13px/18px ${T.font}`, color: T.fg2 }}>
+                Context-rich starter questions
+              </span>
+            </div>
+            <p style={{ ...helper12, margin: '0 0 6px', color: T.fg4 }}>
+              Questions tailored to exactly what your visitor is reading — generated from the live page in real time
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowHowItWorks(v => !v)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 3,
+                font: `500 12px/16px ${T.font}`, color: T.primary,
+                background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+              }}
+            >
+              How it works
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{
+                transform: showHowItWorks ? 'rotate(180deg)' : 'rotate(0deg)',
+                transition: 'transform 0.15s',
+              }}>
+                <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+
+          {tier === 'enterprise' ? (
+            <a
+              href="#"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                font: `500 13px/18px ${T.font}`, color: T.fg2,
+                background: '#fff',
+                border: `1px solid ${T.border}`,
+                borderRadius: 16, padding: '6px 12px',
+                textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0,
+                transition: 'border-color 0.12s, color 0.12s',
+              }}
+              onMouseEnter={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.borderColor = T.gray300; el.style.color = T.fg1 }}
+              onMouseLeave={e => { const el = e.currentTarget as HTMLAnchorElement; el.style.borderColor = T.border; el.style.color = T.fg2 }}
+            >
+              Manage context-rich starter questions
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setUpsellPlan('Enterprise')}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                font: `500 13px/18px ${T.font}`, color: T.fg3,
+                background: '#fff',
+                border: `1px solid ${T.border}`,
+                borderRadius: 16, padding: '6px 12px',
+                cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                transition: 'border-color 0.12s, color 0.12s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = T.gray300; e.currentTarget.style.color = T.fg2 }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.fg3 }}
+            >
+              Manage context-rich starter questions
+            </button>
+          )}
+        </div>
+
+        {/* How it works — expandable */}
+        {showHowItWorks && (
+          <ol style={{
+            margin: '12px 0 0',
+            padding: 0,
+            listStyle: 'none',
+            display: 'flex', flexDirection: 'column', gap: 0,
+            border: `1px solid ${T.divider}`,
+            borderRadius: 16,
+            background: T.gray100,
+            overflow: 'hidden',
+            animation: 'fadeSlideIn 0.18s ease both',
+          }}>
+            {[
+              {
+                step: '1',
+                text: 'Set up the Webpage Awareness Action to embed your agent on a website.',
+              },
+              {
+                step: '2',
+                text: 'When a visitor lands on the page, CustomGPT.ai reads the page content instantly.',
+              },
+              {
+                step: '3',
+                text: 'CustomGPT.ai generates a question immediately relevant to what that visitor is reading and places it at the top of your starter list.',
+              },
+              {
+                step: '4',
+                text: 'Questions are saved for 30 days and refreshed automatically. Manage them anytime from this page.',
+              },
+            ].map((item, i, arr) => (
+              <li key={item.step} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                padding: '10px 14px',
+                borderBottom: i < arr.length - 1 ? `1px solid ${T.divider}` : 'none',
+              }}>
+                <span style={{
+                  width: 18, height: 18,
+                  borderRadius: '50%',
+                  background: T.primary100,
+                  color: T.primaryActive,
+                  font: `600 10px/18px ${T.font}`,
+                  textAlign: 'center',
+                  flexShrink: 0,
+                  marginTop: 1,
+                }}>
+                  {item.step}
+                </span>
+                <span style={{ font: `400 12px/18px ${T.font}`, color: T.fg3 }}>
+                  {item.text}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+
       </div>{/* end disabled wrapper */}
 
       {/* Free overlay */}
@@ -1231,16 +964,16 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
           alignItems: 'center', justifyContent: 'center',
           gap: 16, padding: 24,
           background: 'rgba(250,248,248,0.90)',
-          borderRadius: 6,
+          borderRadius: 16,
           textAlign: 'center',
         }}>
           <div style={{
-            width: 44, height: 44, borderRadius: 10,
+            width: 44, height: 44, borderRadius: 16,
             background: '#E3E1FC',
             display: 'grid', placeItems: 'center', flexShrink: 0,
           }}>
             <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 16 16" fill="none">
-              <path d="M5.33337 7.33333V4.66667C5.33337 3.19391 6.52728 2 8.00004 2C9.4728 2 10.6667 3.19391 10.6667 4.66667V7.33333M8.66671 10.6667C8.66671 11.0349 8.36823 11.3333 8.00004 11.3333C7.63185 11.3333 7.33337 11.0349 7.33337 10.6667C7.33337 10.2985 7.63185 10 8.00004 10C8.36823 10 8.66671 10.2985 8.66671 10.6667ZM4.66671 14H11.3334C12.0698 14 12.6667 13.403 12.6667 12.6667V8.66667C12.6667 7.93029 12.0698 7.33333 11.3334 7.33333H4.66671C3.93033 7.33333 3.93033 7.93029 3.33337 8.66667V12.6667C3.33337 13.403 3.93033 14 4.66671 14Z" stroke="#7367F0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M5.33337 7.33333V4.66667C5.33337 3.19391 6.52728 2 8.00004 2C9.4728 2 10.6667 3.19391 10.6667 4.66667V7.33333M8.66671 10.6667C8.66671 11.0349 8.36823 11.3333 8.00004 11.3333C7.63185 11.3333 7.33337 11.0349 7.33337 10.6667C7.33337 10.2985 7.63185 10 8.00004 10C8.66671 10.2985 8.66671 10.6667ZM4.66671 14H11.3334C12.0698 14 12.6667 13.403 12.6667 12.6667V8.66667C12.6667 7.93029 12.0698 7.33333 11.3334 7.33333H4.66671C3.93033 7.33333 3.33337 7.93029 3.33337 8.66667V12.6667C3.33337 13.403 3.93033 14 4.66671 14Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
           <div>
@@ -1248,8 +981,8 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
               Starter Questions is a Premium feature
             </h3>
             <p style={{ font: `400 13px/18px ${T.font}`, color: T.fg3, margin: 0, maxWidth: 300 }}>
-              Add up to 4 questions to guide users from the very first message.
-              On Enterprise, AI generates them from your knowledge base.
+              Add up to 4 questions that greet users the moment they open your agent.
+              On Enterprise, context-rich questions are added automatically — tailored to the exact page your visitor is reading.
             </p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -1258,7 +991,7 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 font: `600 13px/18px ${T.font}`, color: '#fff',
                 background: T.primary, border: 'none',
-                borderRadius: 8, padding: '9px 20px',
+                borderRadius: 16, padding: '9px 20px',
                 cursor: 'pointer', boxShadow: T.primaryShadow,
               }}
               onMouseEnter={e => (e.currentTarget.style.background = T.primaryHover)}
@@ -1284,7 +1017,7 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
           left: '50%', transform: 'translateX(-50%)',
           display: 'flex', alignItems: 'center', gap: 12,
           background: T.fg1, color: '#fff',
-          padding: '10px 16px', borderRadius: 8,
+          padding: '10px 16px', borderRadius: 16,
           boxShadow: T.shadowModal,
           font: `400 13px/18px ${T.font}`,
           zIndex: 50, whiteSpace: 'nowrap',
