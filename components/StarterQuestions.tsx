@@ -659,7 +659,7 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
             padding: '0 4px', marginBottom: 6,
           }}>
             <span style={{ font: `500 11px/16px ${T.font}`, color: T.fg4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Context-rich
+              Context-rich questions
             </span>
             <div style={{ flex: 1, height: 1, background: T.divider }} />
           </div>
@@ -696,7 +696,7 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
             padding: '0 4px', marginBottom: 6,
           }}>
             <span style={{ font: `500 11px/16px ${T.font}`, color: T.fg4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              Context-rich
+              Context-rich questions
             </span>
             <div style={{ flex: 1, height: 1, background: T.divider }} />
           </div>
