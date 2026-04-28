@@ -563,8 +563,8 @@ function SortableRow(props: RowProps) {
               style={{ ...helper12, background: 'none', border: 'none', cursor: 'pointer', color: T.fg3, whiteSpace: 'nowrap', flexShrink: 0 }}>
               Cancel
             </button>
-            <button type="button" onClick={onEditSave}
-              style={{ font: `600 12px/16px ${T.font}`, color: T.primary, background: 'none', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <button type="button" onClick={onEditSave} disabled={!editText.trim()}
+              style={{ font: `600 12px/16px ${T.font}`, color: editText.trim() ? T.primary : T.fg4, background: 'none', border: 'none', cursor: editText.trim() ? 'pointer' : 'default', whiteSpace: 'nowrap', flexShrink: 0 }}>
               Save
             </button>
           </div>
