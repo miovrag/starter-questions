@@ -50,6 +50,7 @@ interface ToastState {
 
 const MAX_QUESTIONS = 4
 const MAX_CHARS = 80
+const DOCS_URL = 'https://docs.customgpt.ai/docs/how-context-rich-starter-questions-work'
 
 const INITIAL_QUESTIONS: Question[] = [
   { id: 'q-0', text: 'What are the key growth drivers in the analytical HPLC market?', source: 'page' },
@@ -222,7 +223,7 @@ function PlanTag({ plan, onClick }: { plan: 'Premium' | 'Enterprise'; onClick?: 
         transition: 'background 0.12s',
         userSelect: 'none',
       }}>
-      <IconMessageQuestion size={13} />
+      <IconBolt size={13} />
       {plan}
     </span>
   )
@@ -283,9 +284,7 @@ function UpsellModal({ plan, onClose }: { plan: 'Premium' | 'Enterprise'; onClos
               background: '#E3E1FC',
               display: 'grid', placeItems: 'center', flexShrink: 0,
             }}>
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 16 16" fill="none">
-                <path d="M5.33337 7.33333V4.66667C5.33337 3.19391 6.52728 2 8.00004 2C9.4728 2 10.6667 3.19391 10.6667 4.66667V7.33333M8.66671 10.6667C8.66671 11.0349 8.36823 11.3333 8.00004 11.3333C7.63185 11.3333 7.33337 11.0349 7.33337 10.6667C7.33337 10.2985 7.63185 10 8.00004 10C8.66671 10.2985 8.66671 10.6667ZM4.66671 14H11.3334C12.0698 14 12.6667 13.403 12.6667 12.6667V8.66667C12.6667 7.93029 12.0698 7.33333 11.3334 7.33333H4.66671C3.93033 7.33333 3.33337 7.93029 3.33337 8.66667V12.6667C3.33337 13.403 3.93033 14 4.66671 14Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <IconMessageQuestion size={22} style={{ color: T.primaryActive }} />
             </div>
             <button type="button" onClick={onClose}
               style={{ color: T.fg4, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 4 }}
@@ -347,8 +346,6 @@ function UpsellModal({ plan, onClose }: { plan: 'Premium' | 'Enterprise'; onClos
     </>
   )
 }
-
-const DOCS_URL = 'https://docs.customgpt.ai/docs/how-context-rich-starter-questions-work'
 
 /* ── Sortable question row ──────────────────────────────────────────────── */
 
@@ -726,6 +723,14 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
       )}
 
       {/* Manual group */}
+      {((tier === 'enterprise' && pageQuestions.length > 0) || tier === 'premium') && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '0 4px', marginBottom: 6 }}>
+          <span style={{ font: `500 11px/16px ${T.font}`, color: T.fg4, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Your questions
+          </span>
+          <div style={{ flex: 1, height: 1, background: T.divider }} />
+        </div>
+      )}
       <DraggingCtx.Provider value={anyDragging}>
         <DndContext
           sensors={sensors}
@@ -861,7 +866,7 @@ export default function StarterQuestions({ tier = 'enterprise' }: { tier?: Tier 
 
           {tier === 'enterprise' ? (
             <a
-              href="#"
+              href={DOCS_URL}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
                 font: `500 13px/18px ${T.font}`, color: T.fg2,
